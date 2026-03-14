@@ -1,0 +1,17 @@
+# Node
+node_modules/
+worker/node_modules/
+npm-debug.log
+
+# Wrangler
+worker/.wrangler/
+.wrangler/
+
+# Go build output
+vortex
+*.exe
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
