@@ -1,0 +1,82 @@
+name: Build & Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64,  name: vortex-linux-amd64        }
+          - { goos: linux,   goarch: arm64,  name: vortex-linux-arm64        }
+          - { goos: linux,   goarch: arm,    name: vortex-linux-arm, goarm: "7" }
+          - { goos: darwin,  goarch: amd64,  name: vortex-darwin-amd64       }
+          - { goos: darwin,  goarch: arm64,  name: vortex-darwin-arm64       }
+          - { goos: windows, goarch: amd64,  name: vortex-windows-amd64.exe  }
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Build ${{ matrix.name }}
+        env:
+          GOOS:        ${{ matrix.goos }}
+          GOARCH:      ${{ matrix.goarch }}
+          GOARM:       ${{ matrix.goarm }}
+          CGO_ENABLED: 0
+        run: |
+          go build \
+            -ldflags="-s -w -X main.version=${{ github.ref_name || inputs.tag }}" \
+            -o dist/${{ matrix.name }} \
+            ./cmd/vortex
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        run: cd dist && sha256sum * > checksums.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name || inputs.tag }}
+          name: "vortex ${{ github.ref_name || inputs.tag }}"
+          body: |
+            ## Install
+            ```sh
+            curl -fsSL https://hackersfun369.github.io/install.sh | sh
+            ```
+            | Platform | Binary |
+            |---|---|
+            | Linux amd64 | `vortex-linux-amd64` |
+            | Linux arm64 | `vortex-linux-arm64` |
+            | Linux arm | `vortex-linux-arm` |
+            | macOS amd64 | `vortex-darwin-amd64` |
+            | macOS Apple Silicon | `vortex-darwin-arm64` |
+            | Windows | `vortex-windows-amd64.exe` |
+          files: dist/*

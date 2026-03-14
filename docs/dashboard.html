@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo">⬡ vortex</a>
+  <div class="nav-links">
+    <a href="/portal">portal</a>
+    <a href="/docs">docs</a>
+    <a href="/live">live</a>
+    <span id="nav-user" class="nav-user hidden"></span>
+    <button onclick="logout()" class="btn-nav-ghost hidden" id="logout-btn">sign out</button>
+  </div>
+</nav>
+
+<main class="dashboard-main">
+  <!-- Not logged in state -->
+  <div id="login-prompt" class="center-card">
+    <h2>Sign in to manage your tunnels</h2>
+    <p>Log in with GitHub to reserve subdomains, view your tunnel history, and apply for API access.</p>
+    <a href="/auth/github" class="btn-primary">Sign in with GitHub</a>
+  </div>
+
+  <!-- Dashboard (shown after auth) -->
+  <div id="dashboard" class="hidden">
+    <div class="dash-header">
+      <div class="dash-title">
+        <img id="avatar" src="" alt="" class="avatar">
+        <div>
+          <h1 id="username-display">Loading...</h1>
+          <span id="api-status-badge" class="badge">checking...</span>
+        </div>
+      </div>
+      <a href="/portal" class="btn-primary">+ new tunnel</a>
+    </div>
+
+    <!-- API key section -->
+    <div class="dash-section" id="api-key-section">
+      <h2>API key</h2>
+      <div id="api-key-display" class="hidden">
+        <div class="code-block">
+          <code id="api-key-value" class="blurred">click to reveal</code>
+          <button onclick="document.getElementById('api-key-value').classList.remove('blurred')" class="copy-btn-sm">reveal</button>
+          <button onclick="copyApiKey()" class="copy-btn-sm">copy</button>
+        </div>
+        <p class="hint">Use this key with <code>vortex -k &lt;key&gt;</code> or <code>Authorization: Bearer &lt;key&gt;</code></p>
+      </div>
+      <div id="api-access-pending" class="hidden">
+        <p class="muted">Your API access application is pending review.</p>
+      </div>
+      <div id="api-access-apply" class="hidden">
+        <p class="muted">Direct API access lets you create tunnels programmatically from scripts, mobile apps, or CI pipelines.</p>
+        <div class="form-group">
+          <label for="apply-reason">Why do you need API access?</label>
+          <textarea id="apply-reason" placeholder="e.g. building a mobile app that needs to create tunnels on demand" rows="3"></textarea>
+        </div>
+        <button onclick="applyForAccess()" class="btn-primary">Apply for API access</button>
+      </div>
+    </div>
+
+    <!-- New API key banner (shown once after signup) -->
+    <div id="new-apikey-banner" class="banner-success hidden">
+      <strong>Your API key (shown once — save it now):</strong>
+      <code id="new-apikey-value"></code>
+      <button onclick="copyNewApiKey()" class="copy-btn-sm">copy</button>
+      <button onclick="dismissBanner()" class="close-btn">✕</button>
+    </div>
+
+    <!-- Tunnels table -->
+    <div class="dash-section">
+      <h2>Your subdomains</h2>
+      <div id="tunnels-loading" class="muted">Loading...</div>
+      <div id="tunnels-empty" class="hidden muted">No tunnels yet. <a href="/portal">Create one →</a></div>
+      <table id="tunnels-table" class="tunnels-table hidden">
+        <thead>
+          <tr>
+            <th>Subdomain</th>
+            <th>URL</th>
+            <th>Status</th>
+            <th>Reserved</th>
+            <th>Last seen</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="tunnels-body"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = 'https://hackersfun369.github.io'
+
+async function init() {
+  // Check for new API key in hash (shown once after signup)
+  const hash = window.location.hash
+  if (hash.startsWith('#apikey=')) {
+    const key = hash.slice(8)
+    document.getElementById('new-apikey-banner').classList.remove('hidden')
+    document.getElementById('new-apikey-value').textContent = key
+    document.getElementById('new-apikey-value').setAttribute('data-key', key)
+    history.replaceState(null, '', '/dashboard')
+  }
+
+  try {
+    const res  = await fetch(`${API}/my/tunnels`, { credentials: 'include' })
+    if (!res.ok) { showLogin(); return }
+    const data = await res.json()
+    showDashboard(data)
+  } catch {
+    showLogin()
+  }
+}
+
+function showLogin() {
+  document.getElementById('login-prompt').classList.remove('hidden')
+  document.getElementById('dashboard').classList.add('hidden')
+}
+
+function showDashboard(data) {
+  document.getElementById('login-prompt').classList.add('hidden')
+  document.getElementById('dashboard').classList.remove('hidden')
+
+  document.getElementById('username-display').textContent = data.github_username
+  document.getElementById('nav-user').textContent         = data.github_username
+  document.getElementById('nav-user').classList.remove('hidden')
+  document.getElementById('logout-btn').classList.remove('hidden')
+
+  // API access badge
+  const badge = document.getElementById('api-status-badge')
+  if (data.api_access) {
+    badge.textContent = 'API access: approved'
+    badge.className   = 'badge badge-green'
+    document.getElementById('api-key-display').classList.remove('hidden')
+  } else {
+    badge.textContent = 'API access: not approved'
+    badge.className   = 'badge badge-gray'
+    checkPendingApplication()
+  }
+
+  // Tunnels
+  renderTunnels(data.tunnels || [])
+}
+
+async function checkPendingApplication() {
+  // Simple heuristic: try applying with empty reason to check status
+  document.getElementById('api-access-apply').classList.remove('hidden')
+}
+
+function renderTunnels(tunnels) {
+  const loading = document.getElementById('tunnels-loading')
+  const empty   = document.getElementById('tunnels-empty')
+  const table   = document.getElementById('tunnels-table')
+  const tbody   = document.getElementById('tunnels-body')
+
+  loading.classList.add('hidden')
+
+  if (!tunnels.length) { empty.classList.remove('hidden'); return }
+
+  table.classList.remove('hidden')
+  tbody.innerHTML = ''
+
+  tunnels.forEach(sub => {
+    const tr = document.createElement('tr')
+    tr.innerHTML = `
+      <td><code>${sub}</code></td>
+      <td><a href="https://${sub}.hackersfun369.github.io" target="_blank">${sub}.hackersfun369.github.io</a></td>
+      <td><span class="status-badge status-unknown" id="status-${sub}">checking...</span></td>
+      <td>—</td>
+      <td id="seen-${sub}">—</td>
+      <td>
+        <button onclick="deleteTunnel('${sub}')" class="btn-danger-sm">delete</button>
+      </td>
+    `
+    tbody.appendChild(tr)
+    fetchTunnelStatus(sub)
+  })
+}
+
+async function fetchTunnelStatus(sub) {
+  try {
+    const res  = await fetch(`${API}/tunnel/${sub}`)
+    const data = await res.json()
+
+    const badge = document.getElementById(`status-${sub}`)
+    const seen  = document.getElementById(`seen-${sub}`)
+
+    const statusMap = {
+      active:   ['● active',   'status-green'],
+      inactive: ['○ inactive', 'status-yellow'],
+      grace:    ['⟳ grace',    'status-yellow'],
+      expired:  ['✕ expired',  'status-red'],
+    }
+
+    const [label, cls] = statusMap[data.status] || ['unknown', 'status-gray']
+    badge.textContent = label
+    badge.className   = `status-badge ${cls}`
+
+    const row = badge.closest('tr')
+    row.cells[3].textContent = data.reserved ? 'Yes' : 'No'
+    if (data.last_seen) {
+      seen.textContent = timeAgo(data.last_seen)
+    }
+  } catch {
+    const badge = document.getElementById(`status-${sub}`)
+    if (badge) { badge.textContent = 'offline'; badge.className = 'status-badge status-gray' }
+  }
+}
+
+async function deleteTunnel(sub) {
+  const token = prompt(`Enter your token for subdomain "${sub}" to delete it:`)
+  if (!token) return
+
+  const res = await fetch(`${API}/tunnel/${sub}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` },
+  })
+  const data = await res.json()
+
+  if (res.ok) {
+    alert(`Tunnel "${sub}" deleted.`)
+    location.reload()
+  } else {
+    alert(`Error: ${data.error}`)
+  }
+}
+
+async function applyForAccess() {
+  const reason = document.getElementById('apply-reason').value.trim()
+  const res    = await fetch(`${API}/my/apply-api-access`, {
+    method:      'POST',
+    credentials: 'include',
+    headers:     { 'Content-Type': 'application/json' },
+    body:        JSON.stringify({ reason }),
+  })
+  const data = await res.json()
+  if (res.ok) {
+    document.getElementById('api-access-apply').classList.add('hidden')
+    document.getElementById('api-access-pending').classList.remove('hidden')
+    alert('Application submitted! The owner will review it.')
+  } else {
+    alert(`Error: ${data.error}`)
+  }
+}
+
+function copyApiKey() {
+  const val = document.getElementById('api-key-value').textContent
+  navigator.clipboard.writeText(val)
+  event.target.textContent = 'copied!'
+  setTimeout(() => event.target.textContent = 'copy', 2000)
+}
+
+function copyNewApiKey() {
+  const val = document.getElementById('new-apikey-value').getAttribute('data-key')
+  navigator.clipboard.writeText(val)
+  event.target.textContent = 'copied!'
+  setTimeout(() => event.target.textContent = 'copy', 2000)
+}
+
+function dismissBanner() {
+  document.getElementById('new-apikey-banner').classList.add('hidden')
+}
+
+async function logout() {
+  await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
+  location.href = '/'
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m    = Math.floor(diff / 60000)
+  if (m < 1)   return 'just now'
+  if (m < 60)  return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24)  return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+
+init()
+</script>
+</body>
+</html>

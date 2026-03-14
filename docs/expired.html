@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex — Tunnel Expired</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo">⬡ vortex</a>
+  <div class="nav-links">
+    <a href="/portal">portal</a>
+    <a href="/docs">docs</a>
+    <a href="/auth/github" class="btn-nav">sign in</a>
+  </div>
+</nav>
+
+<main class="center-main">
+  <div class="center-card expired-card">
+    <div class="expired-icon">⬡</div>
+    <h1>This tunnel has expired</h1>
+    <p id="expired-msg" class="muted">The tunnel <strong id="sub-display"></strong> is no longer active.</p>
+    <p class="muted" id="grace-msg" style="display:none">This subdomain is in its grace period until <strong id="grace-until"></strong>. Only the original owner can reclaim it until then.</p>
+
+    <div class="expired-actions">
+      <a id="claim-btn" href="/portal" class="btn-primary">Claim this subdomain →</a>
+      <a href="/portal" class="btn-ghost">Create a new tunnel</a>
+    </div>
+
+    <div class="expired-hint">
+      <p>Are you the original owner? Use your token to reclaim it:</p>
+      <div class="code-block">
+        <code id="reclaim-cmd"></code>
+        <button onclick="copyReclaim()" class="copy-btn-sm">copy</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = 'https://hackersfun369.github.io'
+const params = new URLSearchParams(window.location.search)
+const sub    = params.get('sub') || ''
+
+document.getElementById('sub-display').textContent = sub || 'this subdomain'
+document.getElementById('reclaim-cmd').textContent =
+  `vortex 3000 -s ${sub || '<subdomain>'} -t <your-token>`
+
+if (sub) {
+  document.getElementById('claim-btn').href =
+    `/portal?subdomain=${encodeURIComponent(sub)}`
+
+  // Check actual status
+  fetch(`${API}/tunnel/${sub}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'grace') {
+        document.getElementById('grace-msg').style.display = 'block'
+        document.getElementById('grace-until').textContent =
+          new Date(data.grace_until).toLocaleDateString()
+        document.getElementById('claim-btn').style.display = 'none'
+      }
+    })
+    .catch(() => {})
+}
+</script>
+</body>
+</html>

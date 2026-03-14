@@ -1,0 +1,14 @@
+{
+  "name": "vortex-api",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev":    "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail":   "wrangler tail",
+    "secret": "wrangler secret put"
+  },
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}

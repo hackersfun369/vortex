@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex — Live Tunnels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo">⬡ vortex</a>
+  <div class="nav-links">
+    <a href="/portal">portal</a>
+    <a href="/docs">docs</a>
+    <a href="/live" class="active">live</a>
+    <a href="/auth/github" class="btn-nav">sign in</a>
+  </div>
+</nav>
+
+<main class="live-main">
+  <!-- Password gate -->
+  <div id="password-gate" class="center-card">
+    <h2>Live tunnel board</h2>
+    <p>This board shows all active public tunnels. Enter the password to view.</p>
+    <div class="form-group">
+      <input type="password" id="board-password" placeholder="password" onkeydown="if(event.key==='Enter')unlock()">
+    </div>
+    <div id="pw-error" class="error-box hidden">Incorrect password</div>
+    <button onclick="unlock()" class="btn-primary full-width">View board</button>
+  </div>
+
+  <!-- Board (shown after correct password) -->
+  <div id="board" class="hidden">
+    <div class="board-header">
+      <h1>Live tunnels <span id="tunnel-count" class="count-badge">0</span></h1>
+      <span id="updated-at" class="muted"></span>
+    </div>
+
+    <div id="board-loading" class="muted">Loading tunnels...</div>
+    <div id="board-empty" class="hidden muted">No active public tunnels right now.</div>
+
+    <table id="board-table" class="tunnels-table hidden">
+      <thead>
+        <tr>
+          <th>Subdomain</th>
+          <th>URL</th>
+          <th>Status</th>
+          <th>Reserved</th>
+          <th>Last seen</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody id="board-body"></tbody>
+    </table>
+
+    <button onclick="loadBoard()" class="btn-ghost mt">↻ Refresh</button>
+  </div>
+</main>
+
+<script>
+const API       = 'https://hackersfun369.github.io'
+const PW_KEY    = 'vortex_board_pw'
+
+// Check if password already stored in session
+const saved = sessionStorage.getItem(PW_KEY)
+if (saved) tryLoadBoard(saved)
+
+async function unlock() {
+  const pw = document.getElementById('board-password').value
+  if (!pw) return
+  tryLoadBoard(pw)
+}
+
+async function tryLoadBoard(pw) {
+  // We verify password client-side by checking API response
+  // The API /tunnels endpoint requires the board password header
+  const res = await fetch(`${API}/tunnels`, {
+    headers: { 'X-Board-Password': pw }
+  })
+  if (res.status === 401) {
+    document.getElementById('pw-error').classList.remove('hidden')
+    sessionStorage.removeItem(PW_KEY)
+    return
+  }
+  sessionStorage.setItem(PW_KEY, pw)
+  document.getElementById('password-gate').classList.add('hidden')
+  document.getElementById('board').classList.remove('hidden')
+  const data = await res.json()
+  renderBoard(data)
+}
+
+async function loadBoard() {
+  const pw  = sessionStorage.getItem(PW_KEY)
+  const res = await fetch(`${API}/tunnels`, { headers: { 'X-Board-Password': pw } })
+  const data = await res.json()
+  renderBoard(data)
+}
+
+function renderBoard(data) {
+  document.getElementById('board-loading').classList.add('hidden')
+  document.getElementById('tunnel-count').textContent = data.count || 0
+  document.getElementById('updated-at').textContent   = `updated ${new Date(data.updated_at).toLocaleTimeString()}`
+
+  const tbody = document.getElementById('board-body')
+  const table = document.getElementById('board-table')
+  const empty = document.getElementById('board-empty')
+
+  if (!data.tunnels?.length) {
+    empty.classList.remove('hidden')
+    table.classList.add('hidden')
+    return
+  }
+
+  table.classList.remove('hidden')
+  tbody.innerHTML = ''
+
+  data.tunnels.forEach(t => {
+    const tr = document.createElement('tr')
+    const statusMap = {
+      active:   ['● active',   'status-green'],
+      inactive: ['○ inactive', 'status-yellow'],
+      grace:    ['⟳ grace',    'status-yellow'],
+    }
+    const [label, cls] = statusMap[t.status] || ['unknown', 'status-gray']
+
+    tr.innerHTML = `
+      <td><code>${t.subdomain}</code></td>
+      <td><a href="${t.url}" target="_blank">${t.url}</a></td>
+      <td><span class="status-badge ${cls}">${label}</span></td>
+      <td>${t.reserved ? 'Yes' : 'No'}</td>
+      <td>${timeAgo(t.last_seen)}</td>
+      <td>${new Date(t.created_at).toLocaleDateString()}</td>
+    `
+    tbody.appendChild(tr)
+  })
+}
+
+function timeAgo(iso) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const m    = Math.floor(diff / 60000)
+  if (m < 1)   return 'just now'
+  if (m < 60)  return `${m}m ago`
+  const h = Math.floor(m / 60)
+  if (h < 24)  return `${h}h ago`
+  return `${Math.floor(h / 24)}d ago`
+}
+</script>
+</body>
+</html>

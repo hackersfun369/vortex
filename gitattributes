@@ -1,0 +1,35 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Shell scripts MUST use LF (CRLF breaks them on Linux/macOS)
+*.sh text eol=lf
+
+# Go source files — LF
+*.go text eol=lf
+
+# JS/TS — LF
+*.js  text eol=lf
+*.ts  text eol=lf
+*.mjs text eol=lf
+
+# Config files — LF
+*.toml text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.toon text eol=lf
+*.mod  text eol=lf
+
+# HTML/CSS — LF
+*.html text eol=lf
+*.css  text eol=lf
+
+# Docs — LF
+*.md   text eol=lf
+
+# Binary files — no conversion
+*.tar.gz binary
+*.zip    binary
+*.exe    binary
+*.png    binary
+*.jpg    binary

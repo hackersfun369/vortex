@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex Docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.docs-layout { display: grid; grid-template-columns: 220px 1fr; gap: 3rem; max-width: 1100px; margin: 3rem auto; padding: 0 1.5rem; }
+.docs-sidebar { position: sticky; top: 80px; height: fit-content; }
+.docs-sidebar nav a { display: block; color: var(--muted); text-decoration: none; font-size: 0.88rem; padding: 0.3rem 0; transition: color .2s; }
+.docs-sidebar nav a:hover { color: var(--text); }
+.docs-sidebar nav a.section { font-weight: 600; color: var(--text); margin-top: 1.2rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; pointer-events: none; }
+.docs-content h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+.docs-content h2 { font-size: 1.3rem; margin: 2.5rem 0 0.7rem; padding-top: 2rem; border-top: 1px solid var(--border); }
+.docs-content h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: var(--accent2); }
+.docs-content p  { color: var(--muted); margin-bottom: 1rem; }
+.docs-content ul { color: var(--muted); padding-left: 1.4rem; margin-bottom: 1rem; }
+.docs-content li { margin-bottom: 0.3rem; }
+.docs-content pre {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 10px; padding: 1.2rem; overflow-x: auto;
+  font-family: var(--mono); font-size: 0.82rem; margin-bottom: 1.2rem; line-height: 1.6;
+}
+.docs-content code {
+  font-family: var(--mono); font-size: 0.85em;
+  background: var(--surface2); padding: 0.15em 0.4em; border-radius: 4px; color: var(--accent2);
+}
+.docs-content pre code { background: none; padding: 0; font-size: inherit; color: var(--text); }
+.method { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 5px; font-family: var(--mono); font-size: 0.8rem; font-weight: 700; margin-right: 0.5rem; }
+.get    { background: rgba(52,212,124,0.15);  color: var(--green); }
+.post   { background: rgba(124,109,250,0.15); color: var(--accent2); }
+.delete { background: rgba(248,113,113,0.15); color: var(--red); }
+.endpoint { margin-bottom: 2rem; }
+.endpoint-path { font-family: var(--mono); font-size: 0.95rem; }
+.auth-badge { display: inline-block; font-size: 0.75rem; border: 1px solid var(--border2); padding: 0.15rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 0.9rem; }
+th { text-align: left; color: var(--muted); font-size: 0.78rem; font-weight: 500; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); }
+td { padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--border); color: var(--muted); }
+td:first-child { color: var(--text); font-family: var(--mono); font-size: 0.85rem; }
+@media (max-width: 768px) { .docs-layout { grid-template-columns: 1fr; } .docs-sidebar { display: none; } }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="/" class="nav-logo">⬡ vortex</a>
+  <div class="nav-links">
+    <a href="/portal">portal</a>
+    <a href="/docs" class="active">docs</a>
+    <a href="/live">live</a>
+    <a href="/auth/github" class="btn-nav">sign in</a>
+  </div>
+</nav>
+
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <nav>
+      <a href="#overview"  class="section">Overview</a>
+      <a href="#install">Installation</a>
+      <a href="#quickstart">Quick start</a>
+      <a href="#cli"       class="section">CLI</a>
+      <a href="#cli-flags">Flags</a>
+      <a href="#cli-env">Environment</a>
+      <a href="#api"       class="section">REST API</a>
+      <a href="#api-create">Create tunnel</a>
+      <a href="#api-get">Get tunnel</a>
+      <a href="#api-delete">Delete tunnel</a>
+      <a href="#api-list">List tunnels</a>
+      <a href="#api-heartbeat">Heartbeat</a>
+      <a href="#api-my">My tunnels</a>
+      <a href="#api-apply">Apply for API</a>
+      <a href="#lifecycle" class="section">Lifecycle</a>
+      <a href="#privacy"   class="section">Privacy</a>
+      <a href="#auth"      class="section">Auth</a>
+      <a href="#errors"    class="section">Errors</a>
+    </nav>
+  </aside>
+
+  <div class="docs-content">
+    <h1>Documentation</h1>
+    <p>Everything you need to use Vortex — from quick start to full API reference.</p>
+
+    <h2 id="overview">Overview</h2>
+    <p>Vortex exposes your local server to the internet via a named subdomain. Traffic flows through Cloudflare's network — Vortex never touches your payload.</p>
+    <pre>localhost:3000  ←── Cloudflare Tunnel ───  myapp.hackersfun369.github.io
+                                                        ↑
+                                               visitor's HTTPS request</pre>
+
+    <h2 id="install">Installation</h2>
+    <pre>curl -fsSL https://hackersfun369.github.io/install.sh | sh</pre>
+    <p>Installs <code>cloudflared</code> and the <code>vortex</code> binary. Supports Linux (amd64/arm64/arm), macOS (amd64/arm64), and Windows (amd64).</p>
+    <p><strong>No install?</strong> Use the <a href="/portal">portal</a> to get a one-command copy-paste.</p>
+
+    <h2 id="quickstart">Quick start</h2>
+    <pre>vortex 3000                        # random subdomain
+vortex 3000 -s myapp               # custom subdomain → myapp.hackersfun369.github.io
+vortex 3000 --privacy              # private, not listed
+vortex 3000 -s myapp --reserve     # permanent reservation (API key required)</pre>
+
+    <h2 id="cli">CLI reference</h2>
+    <h3 id="cli-flags">Flags</h3>
+    <table>
+      <tr><th>Flag</th><th>Short</th><th>Description</th></tr>
+      <tr><td>--subdomain &lt;n&gt;</td><td>-s</td><td>Preferred subdomain. Auto-generates swift-river-4821 style if omitted.</td></tr>
+      <tr><td>--privacy</td><td>-p</td><td>Private mode — no logs, no public listing, secret Gist.</td></tr>
+      <tr><td>--reserve</td><td>-r</td><td>Reserve subdomain permanently. Requires API key.</td></tr>
+      <tr><td>--token &lt;t&gt;</td><td>-t</td><td>Your subdomain token — used to reclaim a reserved subdomain.</td></tr>
+      <tr><td>--api-key &lt;k&gt;</td><td>-k</td><td>Your Vortex API key (starts with vrtx_).</td></tr>
+      <tr><td>--version</td><td>-v</td><td>Print version and exit.</td></tr>
+      <tr><td>--help</td><td>-h</td><td>Show help.</td></tr>
+    </table>
+
+    <h3 id="cli-env">Environment variables</h3>
+    <table>
+      <tr><th>Variable</th><th>Description</th></tr>
+      <tr><td>VORTEX_PRIVACY=1</td><td>Same as --privacy</td></tr>
+      <tr><td>VORTEX_TOKEN=&lt;t&gt;</td><td>Same as --token</td></tr>
+      <tr><td>VORTEX_API_KEY=&lt;k&gt;</td><td>Same as --api-key</td></tr>
+    </table>
+
+    <h2 id="api">REST API</h2>
+    <p>Base URL: <code>https://hackersfun369.github.io</code></p>
+    <p>All responses are JSON. All request bodies are JSON with <code>Content-Type: application/json</code>.</p>
+
+    <div class="endpoint" id="api-create">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/tunnel/create</span> <span class="auth-badge">optional auth</span></h3>
+      <p>Register a new tunnel. Guests can create non-reserved tunnels. API key required for reservation.</p>
+      <pre>{
+  "subdomain": "myapp",    // optional — auto-generates if omitted
+  "port": 3000,            // optional — informational
+  "privacy": false,        // optional — default false
+  "reserve": true          // optional — requires Authorization header
+}</pre>
+      <p>Headers: <code>Authorization: Bearer vrtx_yourkey</code> (for reserve), <code>X-Vortex-Privacy: 1</code> (alt to body privacy)</p>
+      <pre>{
+  "ok": true,
+  "subdomain": "myapp",
+  "url": "https://myapp.hackersfun369.github.io",
+  "token": "save-this-shown-once",
+  "reserved": true,
+  "private": false,
+  "created_at": "2025-01-01T00:00:00Z",
+  "expires_after_inactivity": "30 days",
+  "grace_period_if_reserved": "30 days",
+  "cloudflared_cmd": "cloudflared tunnel --url http://localhost:3000 --hostname myapp.hackersfun369.github.io",
+  "install_cmd": "curl -fsSL https://hackersfun369.github.io/install.sh | sh"
+}</pre>
+    </div>
+
+    <div class="endpoint" id="api-get">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/tunnel/:subdomain</span></h3>
+      <p>Get public info about a tunnel. Never returns token. Returns 404 for private tunnels.</p>
+      <pre>{
+  "subdomain": "myapp",
+  "url": "https://myapp.hackersfun369.github.io",
+  "reserved": true,
+  "private": false,
+  "status": "active",
+  "last_seen": "2025-01-15T08:00:00Z",
+  "created_at": "2025-01-01T00:00:00Z",
+  "grace_until": null
+}</pre>
+      <p>Status values: <code>active</code> / <code>inactive</code> / <code>grace</code> / <code>expired</code></p>
+    </div>
+
+    <div class="endpoint" id="api-delete">
+      <h3><span class="method delete">DELETE</span><span class="endpoint-path">/tunnel/:subdomain</span> <span class="auth-badge">token required</span></h3>
+      <p>Delete a tunnel and immediately free the subdomain.</p>
+      <p>Header: <code>Authorization: Bearer &lt;your-token&gt;</code></p>
+      <pre>{ "ok": true, "subdomain": "myapp", "message": "tunnel deleted, subdomain freed" }</pre>
+    </div>
+
+    <div class="endpoint" id="api-list">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/tunnels</span></h3>
+      <p>List all active non-private tunnels.</p>
+      <pre>{ "ok": true, "count": 3, "tunnels": [...], "updated_at": "2025-01-15T08:00:00Z" }</pre>
+    </div>
+
+    <div class="endpoint" id="api-heartbeat">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/tunnel/heartbeat/:subdomain</span> <span class="auth-badge">token required</span></h3>
+      <p>Update last_seen. Max 1 write per hour per subdomain. Called automatically by the CLI.</p>
+      <pre>{ "ok": true, "subdomain": "myapp", "last_seen": "2025-01-15T10:00:00Z" }</pre>
+    </div>
+
+    <div class="endpoint" id="api-my">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/my/tunnels</span> <span class="auth-badge">auth required</span></h3>
+      <p>List all tunnels owned by the authenticated user.</p>
+      <p>Header: <code>Authorization: Bearer vrtx_yourkey</code> or session cookie</p>
+    </div>
+
+    <div class="endpoint" id="api-apply">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/my/apply-api-access</span> <span class="auth-badge">auth required</span></h3>
+      <p>Apply for direct API access. Owner reviews and approves manually.</p>
+      <pre>{ "reason": "building a mobile app that creates tunnels on demand" }</pre>
+    </div>
+
+    <h2 id="lifecycle">Subdomain lifecycle</h2>
+    <pre>AVAILABLE ──register──► ACTIVE
+                            │
+                   30 days no heartbeat
+                            │
+                         EXPIRED
+                            │
+             ┌──────────────┴──────────────┐
+             │                             │
+        reserved?                    not reserved?
+             │                             │
+     30-day grace period          FREED IMMEDIATELY
+             │
+       grace expires
+             │
+     FREED — anyone can claim</pre>
+
+    <ul>
+      <li>Heartbeat sent automatically by CLI every 60 minutes while tunnel is running</li>
+      <li>Inactivity timeout: 30 days (owner-configurable)</li>
+      <li>Grace period (reserved): 30 days — only token holder can reclaim during this window</li>
+      <li>On expiry: visitor is redirected to <code>/expired?sub=myapp</code></li>
+    </ul>
+
+    <h2 id="privacy">Privacy mode</h2>
+    <p>Pass <code>--privacy</code> (CLI) or <code>"privacy": true</code> (API):</p>
+    <ul>
+      <li>Tunnel Gist is stored as <strong>secret</strong> (not publicly listed on GitHub)</li>
+      <li>Excluded from <code>GET /tunnels</code> listing</li>
+      <li>Not shown on the live board</li>
+      <li>Only the subdomain name and token hash are stored — no metadata</li>
+    </ul>
+
+    <h2 id="auth">Authentication</h2>
+    <p><strong>GitHub OAuth</strong> — click "Sign in" to authenticate. A personal API key (<code>vrtx_...</code>) is issued once and shown in your dashboard.</p>
+    <p><strong>API key</strong> — send as <code>Authorization: Bearer vrtx_yourkey</code>. Required for reservation and <code>/my/tunnels</code>. API users must be approved by the owner.</p>
+    <p><strong>API access</strong> — apply via the dashboard. Owner approves manually.</p>
+
+    <h2 id="errors">Error responses</h2>
+    <table>
+      <tr><th>Status</th><th>Meaning</th></tr>
+      <tr><td>400</td><td>Invalid request — bad subdomain format, missing field</td></tr>
+      <tr><td>401</td><td>Authentication required or invalid token</td></tr>
+      <tr><td>403</td><td>API access not approved, or wrong token for subdomain</td></tr>
+      <tr><td>404</td><td>Tunnel not found, expired, or private</td></tr>
+      <tr><td>409</td><td>Subdomain already in use — includes retry hint</td></tr>
+      <tr><td>429</td><td>Rate limit exceeded — includes retry_after seconds</td></tr>
+      <tr><td>500</td><td>Internal server error</td></tr>
+    </table>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="footer-logo">⬡ vortex</div>
+  <div class="footer-links">
+    <a href="/portal">portal</a>
+    <a href="/docs">docs</a>
+    <a href="/live">live tunnels</a>
+    <a href="https://github.com/hackersfun369/vortex">github</a>
+  </div>
+  <div class="footer-note">free forever · built on cloudflare + github</div>
+</footer>
+</body>
+</html>
