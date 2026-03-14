@@ -7,41 +7,17 @@ compatibility_flags = ["nodejs_compat"]
 [triggers]
 crons = ["0 2 * * *"]
 
-# Routes — after adding your github.io domain to Cloudflare
-# Replace hackersfun369 with your actual GitHub username
-[[routes]]
-pattern = "hackersfun369.github.io/tunnel/*"
-zone_name = "hackersfun369.github.io"
+# Deployed to workers.dev subdomain — no custom routes needed
+# Live at: https://vortex-api.guessmesir-007.workers.dev
 
-[[routes]]
-pattern = "hackersfun369.github.io/tunnels"
-zone_name = "hackersfun369.github.io"
-
-[[routes]]
-pattern = "hackersfun369.github.io/health"
-zone_name = "hackersfun369.github.io"
-
-[[routes]]
-pattern = "hackersfun369.github.io/auth/*"
-zone_name = "hackersfun369.github.io"
-
-[[routes]]
-pattern = "hackersfun369.github.io/my/*"
-zone_name = "hackersfun369.github.io"
-
-[[routes]]
-pattern = "hackersfun369.github.io/admin/*"
-zone_name = "hackersfun369.github.io"
-
-# Environment variables (non-secret)
-# Secrets are set via: npx wrangler secret put SECRET_NAME
 [vars]
 ENVIRONMENT      = "production"
-INACTIVITY_DAYS  = "30"
-GRACE_DAYS       = "30"
-BASE_DOMAIN      = "hackersfun369.github.io"
+INACTIVITY_DAYS  = "365"
+GRACE_DAYS       = "365"
+BASE_DOMAIN      = "vortex-api.guessmesir-007.workers.dev"
+PAGES_DOMAIN     = "hackersfun369.github.io/vortex"
 
-# Secrets to set via wrangler CLI (never put values here):
+# Set secrets via terminal — never put values here:
 # npx wrangler secret put GITHUB_TOKEN
 # npx wrangler secret put GITHUB_OAUTH_CLIENT_ID
 # npx wrangler secret put GITHUB_OAUTH_CLIENT_SECRET
