@@ -334,3 +334,11 @@ function verifyOwnerToken(request, env) {
   const token = extractBearer(request)
   return token && token === env.OWNER_TOKEN
 }
+
+// ── Admin — debug (list all gists) ────────────────────────────────────────
+export async function handleAdminDebug(request, env) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+  const { debugListGists } = await import('./gist.js')
+  const gists = await debugListGists(env.GITHUB_TOKEN)
+  return jsonRes({ ok: true, gists })
+}
