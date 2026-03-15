@@ -1,4 +1,3 @@
-// v2.0.0 - full rewrite
 // auth.js — GitHub OAuth, API keys, session management, admin
 
 import {
@@ -168,7 +167,7 @@ export async function verifyApiKey(request, env) {
 }
 
 export async function authenticate(request, env, requireApiAccess = false) {
-  // Try API key
+  // Try API key first (works for all endpoints)
   const raw = extractBearer(request)
   if (raw?.startsWith('vrtx_')) {
     const hash  = await sha256(raw)
@@ -178,27 +177,19 @@ export async function authenticate(request, env, requireApiAccess = false) {
       if (!full) continue
       if (full.api_key_hash !== hash) continue
       if (full.suspended) return { user: null, error: errRes('Account suspended', 403) }
-      if (requireApiAccess && !full.api_access) {
-        return { user: null, error: errRes('API access not approved. Apply via dashboard.', 403) }
-      }
       return { user: full, error: null }
     }
     return { user: null, error: errRes('Invalid API key', 401) }
   }
 
-  // Try session
+  // Try session cookie (browser OAuth flow)
   const username = await verifySession(request, env)
-  if (!username) return { user: null, error: errRes('Authentication required', 401) }
-
-  const user = await getUser(username, env.GITHUB_TOKEN)
-  if (!user) return { user: null, error: errRes('User not found', 401) }
-  if (user.suspended) return { user: null, error: errRes('Account suspended', 403) }
-
-  if (requireApiAccess && !user.api_access) {
-    return { user: null, error: errRes('API access not approved. Apply via dashboard.', 403) }
+  if (username) {
+    const user = await getUser(username, env.GITHUB_TOKEN)
+    if (user && !user.suspended) return { user, error: null }
   }
 
-  return { user, error: null }
+  return { user: null, error: errRes('Authentication required — use Authorization: Bearer vrtx_yourkey', 401) }
 }
 
 // ── My tunnels + profile ───────────────────────────────────────────────────
@@ -224,15 +215,41 @@ export async function handleMyTunnels(request, env) {
 
 // ── Recover API key ────────────────────────────────────────────────────────
 export async function handleRecoverApiKey(request, env) {
+  // Support both session cookie and API key
   const { user, error } = await authenticate(request, env)
   if (error) return error
 
   if (!user.api_key_encrypted) {
-    return errRes('No encrypted API key found. Please contact support.', 404)
+    return errRes('No encrypted API key found for this account.', 404)
   }
 
   const rawKey = await decryptToken(user.api_key_encrypted, env.ENCRYPTION_KEY)
-  return jsonRes({ ok: true, api_key: rawKey, hint: user.api_key_hint })
+  return jsonRes({
+    ok:       true,
+    api_key:  rawKey,
+    hint:     user.api_key_hint,
+    username: user.github_username,
+  })
+}
+
+// ── Recover API key by GitHub username (owner only) ───────────────────────
+export async function handleAdminRecoverKey(request, env, username) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+
+  const user = await getUser(username, env.GITHUB_TOKEN)
+  if (!user) return errRes('User not found', 404)
+
+  if (!user.api_key_encrypted) {
+    return errRes('No encrypted API key found for this user.', 404)
+  }
+
+  const rawKey = await decryptToken(user.api_key_encrypted, env.ENCRYPTION_KEY)
+  return jsonRes({
+    ok:       true,
+    username,
+    api_key:  rawKey,
+    hint:     user.api_key_hint,
+  })
 }
 
 // ── Apply for API access ───────────────────────────────────────────────────
@@ -415,4 +432,3 @@ function parseCookies(request) {
 function verifyOwnerToken(request, env) {
   return extractBearer(request) === env.OWNER_TOKEN
 }
-
