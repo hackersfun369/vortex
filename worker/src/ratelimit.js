@@ -68,7 +68,7 @@ export async function checkRateLimit(request, action, subKey = '') {
         {
           retry_after: retryAfter,
           limit: limit.label,
-          hint: 'Use the portal at hackersfun369.github.io/portal for manual tunnel creation',
+          hint: 'Use the portal at hackersfun369.github.io/vortex/portal.html for manual tunnel creation',
         }
       )
     }
