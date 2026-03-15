@@ -101,7 +101,7 @@ export function encodeTOON(obj, indent = 0) {
 }
 
 export function decodeTOON(text) {
-  // Parse TOON back to JS object
+  // Parse TOON back to JS object — handles nested indented objects
   const lines  = text.split('\n')
   const result = {}
   const stack  = [{ obj: result, indent: -1 }]
@@ -110,34 +110,40 @@ export function decodeTOON(text) {
     const line = lines[i]
     if (!line.trim() || line.trim().startsWith('#')) continue
 
-    const indent = line.length - line.trimStart().length
+    const indent  = line.length - line.trimStart().length
     const trimmed = line.trim()
 
-    // pop stack to correct level
+    // Pop stack back to parent level
     while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
       stack.pop()
     }
 
-    const current = stack[stack.length - 1].obj
+    const current  = stack[stack.length - 1].obj
     const colonIdx = trimmed.indexOf(':')
     if (colonIdx === -1) continue
 
     const key = trimmed.slice(0, colonIdx).trim()
     const val = trimmed.slice(colonIdx + 1).trim()
 
+    if (!key) continue
+
     if (val === '' || val === undefined) {
-      // nested object follows
+      // Nested object — next indented lines are children
       const nested = {}
       current[key] = nested
-      stack.push({ obj: nested, indent })
-    } else if (val === 'null')          current[key] = null
-    else if (val === 'true')            current[key] = true
-    else if (val === 'false')           current[key] = false
-    else if (val === '[]')              current[key] = []
-    else if (/^\[.+\]$/.test(val))     current[key] = val.slice(1,-1).split(',').map(s => s.trim())
-    else if (/^-?\d+(\.\d+)?$/.test(val)) current[key] = Number(val)
-    else if (val.startsWith('"'))       current[key] = val.slice(1,-1).replace(/\\"/g,'"')
-    else                                current[key] = val
+      stack.push({ obj: nested, indent: indent })
+    } else if (val === 'null')                       current[key] = null
+    else if (val === 'true')                         current[key] = true
+    else if (val === 'false')                        current[key] = false
+    else if (val === '[]')                           current[key] = []
+    else if (/^\[.*\]$/.test(val)) {
+      // Array — split by comma, handle empty
+      const inner = val.slice(1, -1).trim()
+      current[key] = inner === '' ? [] : inner.split(',').map(s => s.trim())
+    }
+    else if (/^-?\d+(\.\d+)?$/.test(val))         current[key] = Number(val)
+    else if (val.startsWith('"') && val.endsWith('"')) current[key] = val.slice(1,-1).replace(/\\"/g,'"')
+    else                                              current[key] = val
   }
 
   return result
