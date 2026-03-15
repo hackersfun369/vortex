@@ -1,3 +1,4 @@
+// v2.0.0 - full rewrite
 // ratelimit.js — IP-based rate limiting using Cloudflare Cache API
 
 import { errRes, clientIP } from './utils.js'
@@ -50,3 +51,4 @@ export async function checkRateLimit(request, action, subKey = '') {
   }
   return null
 }
+

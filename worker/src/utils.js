@@ -1,3 +1,4 @@
+// v2.0.0 - full rewrite
 // utils.js — shared helpers, crypto, subdomain generation
 
 const ADJECTIVES = [
@@ -133,3 +134,4 @@ export function clientIP(request) {
          request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
          'unknown'
 }
+

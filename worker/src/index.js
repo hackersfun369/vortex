@@ -1,3 +1,4 @@
+// v2.0.0 - full rewrite
 // index.js — Vortex Cloudflare Worker main router
 
 import { jsonRes, errRes, CORS } from './utils.js'
@@ -114,3 +115,4 @@ export default {
     )
   },
 }
+

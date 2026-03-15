@@ -1,3 +1,4 @@
+// v2.0.0 - full rewrite
 // gist.js — GitHub Gist storage, one Gist per record, pure JSON
 
 // ── Gist description prefixes ──────────────────────────────────────────────
@@ -222,3 +223,4 @@ export async function debugListAllGists(token) {
     return { error: err.message }
   }
 }
+

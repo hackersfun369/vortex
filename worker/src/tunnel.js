@@ -1,3 +1,4 @@
+// v2.0.0 - full rewrite
 // tunnel.js — tunnel CRUD, heartbeat, expiry sweep
 
 import {
@@ -266,3 +267,4 @@ async function unlinkTunnelFromUser(sub, username, env) {
   user.tunnels = (user.tunnels || []).filter(s => s !== sub)
   await saveUser(user, env.GITHUB_TOKEN)
 }
+

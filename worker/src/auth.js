@@ -1,3 +1,4 @@
+// v2.0.0 - full rewrite
 // auth.js — GitHub OAuth, API keys, session management, admin
 
 import {
@@ -414,3 +415,4 @@ function parseCookies(request) {
 function verifyOwnerToken(request, env) {
   return extractBearer(request) === env.OWNER_TOKEN
 }
+
