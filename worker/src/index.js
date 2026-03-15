@@ -1,19 +1,25 @@
 // index.js — Vortex Cloudflare Worker main router
 
 import { jsonRes, errRes, CORS } from './utils.js'
+
 import {
   handleAuthGitHub, handleAuthCallback, handleLogout,
-  handleMyTunnels, handleApplyApiAccess,
-  handleAdminApplications, handleAdminApprove, handleAdminRevoke,
-  handleAdminUsers, handleAdminDebug, handleAdminMigrate,
+  handleMyTunnels, handleRecoverApiKey, handleApplyApiAccess,
+  handleAdminUsers, handleAdminApplications,
+  handleAdminApprove, handleAdminRevoke,
+  handleAdminSuspend, handleAdminUnsuspend,
+  handleAdminDebug,
 } from './auth.js'
+
 import {
   handleCreate, handleDelete, handleGet,
-  handleList, handleHeartbeat, sweepExpiredTunnels,
+  handleList, handleHeartbeat,
+  handleRecoverTunnelToken,
+  sweepExpiredTunnels,
 } from './tunnel.js'
 
 export default {
-  // ── HTTP requests ────────────────────────────────────────────────────────
+  // ── HTTP handler ──────────────────────────────────────────────────────────
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS })
@@ -24,11 +30,13 @@ export default {
     const method = request.method
 
     try {
-      // ── Public ────────────────────────────────────────────────────────
+
+      // ── Health ─────────────────────────────────────────────────────────
       if (method === 'GET' && path === '/health') {
-        return jsonRes({ status: 'ok', version: '1.0.0', ts: Date.now() })
+        return jsonRes({ status: 'ok', version: '2.0.0', ts: Date.now() })
       }
 
+      // ── Public tunnel endpoints ────────────────────────────────────────
       if (method === 'POST' && path === '/tunnel/create') {
         return handleCreate(request, env)
       }
@@ -37,7 +45,7 @@ export default {
         return handleList(request, env)
       }
 
-      if (method === 'GET' && path.startsWith('/tunnel/') && !path.includes('/heartbeat')) {
+      if (method === 'GET' && path.startsWith('/tunnel/') && !path.includes('/heartbeat') && !path.includes('/recover')) {
         const sub = path.split('/')[2]
         if (!sub) return errRes('Subdomain required', 400)
         return handleGet(request, env, sub)
@@ -49,33 +57,44 @@ export default {
         return handleDelete(request, env, sub)
       }
 
-      // ── Auth ──────────────────────────────────────────────────────────
+      // ── Auth ───────────────────────────────────────────────────────────
       if (method === 'GET'  && path === '/auth/github')   return handleAuthGitHub(request, env)
       if (method === 'GET'  && path === '/auth/callback') return handleAuthCallback(request, env)
       if (method === 'POST' && path === '/auth/logout')   return handleLogout(request, env)
 
-      // ── Authenticated ─────────────────────────────────────────────────
+      // ── Authenticated endpoints ────────────────────────────────────────
       if (method === 'POST' && path.includes('/tunnel/heartbeat/')) {
         const sub = path.split('/heartbeat/')[1]
         if (!sub) return errRes('Subdomain required', 400)
         return handleHeartbeat(request, env, sub)
       }
 
-      if (method === 'GET'    && path === '/my/tunnels')          return handleMyTunnels(request, env)
-      if (method === 'POST'   && path === '/my/apply-api-access') return handleApplyApiAccess(request, env)
+      if (method === 'GET' && path.includes('/tunnel/recover/')) {
+        const sub = path.split('/recover/')[1]
+        if (!sub) return errRes('Subdomain required', 400)
+        return handleRecoverTunnelToken(request, env, sub)
+      }
 
-      // ── Admin (owner only) ────────────────────────────────────────────
+      if (method === 'GET'  && path === '/my/tunnels')          return handleMyTunnels(request, env)
+      if (method === 'GET'  && path === '/my/recover-apikey')   return handleRecoverApiKey(request, env)
+      if (method === 'POST' && path === '/my/apply-api-access') return handleApplyApiAccess(request, env)
+
+      // ── Admin (owner only) ─────────────────────────────────────────────
       if (method === 'GET'    && path === '/admin/debug')               return handleAdminDebug(request, env)
-      if (method === 'POST'   && path === '/admin/migrate')             return handleAdminMigrate(request, env)
-      if (method === 'GET'    && path === '/admin/applications')        return handleAdminApplications(request, env)
       if (method === 'GET'    && path === '/admin/users')               return handleAdminUsers(request, env)
+      if (method === 'GET'    && path === '/admin/applications')        return handleAdminApplications(request, env)
+
       if (method === 'POST'   && path.startsWith('/admin/approve/')) {
-        const username = path.split('/admin/approve/')[1]
-        return handleAdminApprove(request, env, username)
+        return handleAdminApprove(request, env, path.split('/admin/approve/')[1])
       }
       if (method === 'DELETE' && path.startsWith('/admin/revoke/')) {
-        const username = path.split('/admin/revoke/')[1]
-        return handleAdminRevoke(request, env, username)
+        return handleAdminRevoke(request, env, path.split('/admin/revoke/')[1])
+      }
+      if (method === 'POST'   && path.startsWith('/admin/suspend/')) {
+        return handleAdminSuspend(request, env, path.split('/admin/suspend/')[1])
+      }
+      if (method === 'POST'   && path.startsWith('/admin/unsuspend/')) {
+        return handleAdminUnsuspend(request, env, path.split('/admin/unsuspend/')[1])
       }
 
       return errRes('Not found', 404)
@@ -86,7 +105,7 @@ export default {
     }
   },
 
-  // ── Cron trigger — runs daily to sweep expired tunnels ────────────────────
+  // ── Cron: daily sweep ─────────────────────────────────────────────────────
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
       sweepExpiredTunnels(env).then(n => {
