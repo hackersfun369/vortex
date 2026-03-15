@@ -1,4 +1,3 @@
-// v2.0.0 - full rewrite
 // index.js — Vortex Cloudflare Worker main router
 
 import { jsonRes, errRes, CORS } from './utils.js'
@@ -9,7 +8,7 @@ import {
   handleAdminUsers, handleAdminApplications,
   handleAdminApprove, handleAdminRevoke,
   handleAdminSuspend, handleAdminUnsuspend,
-  handleAdminDebug,
+  handleAdminDebug, handleAdminRecoverKey,
 } from './auth.js'
 
 import {
@@ -82,6 +81,7 @@ export default {
 
       // ── Admin (owner only) ─────────────────────────────────────────────
       if (method === 'GET'    && path === '/admin/debug')               return handleAdminDebug(request, env)
+      if (method === 'GET'    && path.startsWith('/admin/recover-key/'))  return handleAdminRecoverKey(request, env, path.split('/admin/recover-key/')[1])
       if (method === 'GET'    && path === '/admin/users')               return handleAdminUsers(request, env)
       if (method === 'GET'    && path === '/admin/applications')        return handleAdminApplications(request, env)
 
@@ -115,4 +115,3 @@ export default {
     )
   },
 }
-
