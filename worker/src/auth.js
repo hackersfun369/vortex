@@ -1,52 +1,50 @@
-// auth.js — GitHub OAuth + API key issuance + session management
+// auth.js — GitHub OAuth, API keys, session management, admin
 
 import {
   generateToken, sha256, verifyToken,
+  encryptToken, decryptToken, tokenHint,
   jsonRes, errRes, extractBearer, nowISO
 } from './utils.js'
-import { getRegistry, setRegistry, USERS_DESC, PENDING_DESC, APPROVED_DESC } from './gist.js'
+
+import {
+  getUser, saveUser, listUsers,
+  getPending, savePending, deletePending, listPending,
+  debugListAllGists
+} from './gist.js'
 
 // ── GitHub OAuth ───────────────────────────────────────────────────────────
-
 export async function handleAuthGitHub(request, env) {
-  const state    = generateToken('', 16)
-  const params   = new URLSearchParams({
+  const state  = generateToken('', 16)
+  const params = new URLSearchParams({
     client_id:    env.GITHUB_OAUTH_CLIENT_ID,
     redirect_uri: `https://${env.BASE_DOMAIN}/auth/callback`,
-    scope:        'read:user',
+    scope:        'read:user user:email',
     state,
   })
-  const url = `https://github.com/login/oauth/authorize?${params}`
-
   return new Response(null, {
     status: 302,
     headers: {
-      'Location':  url,
-      'Set-Cookie': `vortex_oauth_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
+      'Location':   `https://github.com/login/oauth/authorize?${params}`,
+      'Set-Cookie': `vortex_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`,
     },
   })
 }
 
 export async function handleAuthCallback(request, env) {
-  const url    = new URL(request.url)
-  const code   = url.searchParams.get('code')
-  const state  = url.searchParams.get('state')
+  const url   = new URL(request.url)
+  const code  = url.searchParams.get('code')
+  const state = url.searchParams.get('state')
 
-  // Verify state
-  const cookies     = parseCookies(request)
-  const savedState  = cookies['vortex_oauth_state']
+  const cookies    = parseCookies(request)
+  const savedState = cookies['vortex_state']
   if (!code || !state || state !== savedState) {
-    return errRes('Invalid OAuth state or missing code', 400)
+    return errRes('Invalid OAuth state', 400)
   }
 
-  // Exchange code for GitHub access token
+  // Exchange code for GitHub token
   const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
-    headers: {
-      'Accept':       'application/json',
-      'Content-Type': 'application/json',
-      'User-Agent':   'vortex-tunnel-service',
-    },
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'vortex' },
     body: JSON.stringify({
       client_id:     env.GITHUB_OAUTH_CLIENT_ID,
       client_secret: env.GITHUB_OAUTH_CLIENT_SECRET,
@@ -54,250 +52,334 @@ export async function handleAuthCallback(request, env) {
       redirect_uri: `https://${env.BASE_DOMAIN}/auth/callback`,
     }),
   })
-
   const tokenData = await tokenRes.json()
-  if (!tokenData.access_token) {
-    return errRes('GitHub OAuth failed', 502)
-  }
+  if (!tokenData.access_token) return errRes('GitHub OAuth failed', 502)
 
-  // Fetch GitHub user profile
+  // Fetch GitHub profile
   const profileRes = await fetch('https://api.github.com/user', {
-    headers: {
-      'Authorization': `token ${tokenData.access_token}`,
-      'User-Agent':    'vortex-tunnel-service',
-    },
+    headers: { 'Authorization': `token ${tokenData.access_token}`, 'User-Agent': 'vortex' },
   })
   const profile = await profileRes.json()
-  const githubUsername = profile.login
-  const githubId       = String(profile.id)
 
-  // Load or create user record
-  const { data: users, gist_id: usersGistId } = await getRegistry(USERS_DESC, env.GITHUB_TOKEN)
+  // Fetch email if not public
+  let email = profile.email || ''
+  if (!email) {
+    const emailRes = await fetch('https://api.github.com/user/emails', {
+      headers: { 'Authorization': `token ${tokenData.access_token}`, 'User-Agent': 'vortex' },
+    })
+    const emails = await emailRes.json()
+    const primary = emails.find(e => e.primary && e.verified)
+    email = primary?.email || ''
+  }
 
-  let apiKey     = null
-  let apiKeyHash = null
+  const username = profile.login
+  const now      = nowISO()
 
-  if (!users[githubUsername]) {
-    // New user — issue API key (not yet approved for API access)
-    apiKey     = generateToken('vrtx', 32)
-    apiKeyHash = await sha256(apiKey)
+  // Load or create user
+  let user        = await getUser(username, env.GITHUB_TOKEN)
+  let rawApiKey   = null
+  let isNewUser   = false
 
-    users[githubUsername] = {
-      github_username: githubUsername,
-      github_id:       githubId,
-      api_key_hash:    apiKeyHash,
-      api_access:      false,
-      joined_at:       nowISO(),
-      tunnels:         [],
+  if (!user) {
+    isNewUser  = true
+    rawApiKey  = generateToken('vrtx', 32)
+    const hash = await sha256(rawApiKey)
+    const enc  = await encryptToken(rawApiKey, env.ENCRYPTION_KEY)
+
+    user = {
+      github_username:   username,
+      github_id:         String(profile.id),
+      github_avatar:     profile.avatar_url || '',
+      email,
+      api_key_hash:      hash,
+      api_key_encrypted: enc,
+      api_key_hint:      tokenHint(rawApiKey),
+      api_access:        false,
+      role:              'user',
+      joined_at:         now,
+      last_login:        now,
+      tunnels:           [],
+      tunnel_limit:      10,
+      suspended:         false,
+      suspension_reason: null,
     }
-
-    await setRegistry(USERS_DESC, users, usersGistId, env.GITHUB_TOKEN)
+    await saveUser(user, env.GITHUB_TOKEN)
+  } else {
+    // Update last login and email
+    user.last_login = now
+    if (email && !user.email) user.email = email
+    if (profile.avatar_url)   user.github_avatar = profile.avatar_url
+    await saveUser(user, env.GITHUB_TOKEN)
   }
 
-  // Create signed session JWT (simple, no library needed)
-  const session = await createSession(githubUsername, githubId, env.SESSION_SECRET)
+  // Create session
+  const session = await createSession(username, String(profile.id), env.SESSION_SECRET)
 
-  const redirectUrl = `https://hackersfun369.github.io/vortex/dashboard.html`
-  const headers = {
-    'Location': redirectUrl,
-    'Set-Cookie': [
-      `vortex_session=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
-      `vortex_oauth_state=; Path=/; HttpOnly; Secure; Max-Age=0`,
-    ].join(', '),
-  }
+  const dashUrl = `https://${env.PAGES_DOMAIN}/dashboard.html`
+  const dest    = isNewUser ? `${dashUrl}#apikey=${rawApiKey}` : dashUrl
 
-  // If new user, show API key once via redirect with fragment
-  const dest = apiKey
-    ? `${redirectUrl}#apikey=${apiKey}`
-    : redirectUrl
-
-  return new Response(null, { status: 302, headers: { ...headers, 'Location': dest } })
+  return new Response(null, {
+    status: 302,
+    headers: {
+      'Location':   dest,
+      'Set-Cookie': [
+        `vortex_session=${session}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=2592000`,
+        `vortex_state=; Path=/; HttpOnly; Secure; Max-Age=0`,
+      ].join(', '),
+    },
+  })
 }
 
 export async function handleLogout(request, env) {
   return new Response(null, {
     status: 302,
     headers: {
-      'Location': `https://${env.BASE_DOMAIN}/`,
+      'Location':   `https://${env.PAGES_DOMAIN}/`,
       'Set-Cookie': 'vortex_session=; Path=/; HttpOnly; Secure; Max-Age=0',
     },
   })
 }
 
 // ── Auth middleware ────────────────────────────────────────────────────────
-
-// Verify session cookie → returns github_username or null
 export async function verifySession(request, env) {
   const cookies = parseCookies(request)
   const session = cookies['vortex_session']
   if (!session) return null
-  return verifySession_(session, env.SESSION_SECRET)
+  return verifySessionToken(session, env.SESSION_SECRET)
 }
 
-// Verify API key → returns user record or null
 export async function verifyApiKey(request, env) {
   const raw = extractBearer(request)
   if (!raw || !raw.startsWith('vrtx_')) return null
 
   const hash  = await sha256(raw)
-  const { data: users } = await getRegistry(USERS_DESC, env.GITHUB_TOKEN)
+  const users = await listUsers(env.GITHUB_TOKEN)
+  const user  = users.find(u => {
+    const fullUser = getUser(u.github_username, env.GITHUB_TOKEN)
+    return u.api_key_hash === hash
+  })
 
-  for (const [username, user] of Object.entries(users)) {
-    if (user.api_key_hash === hash) {
-      return { ...user, github_username: username }
-    }
-  }
-  return null
+  if (!user) return null
+
+  // Get full user with encrypted fields
+  const full = await getUser(user.github_username, env.GITHUB_TOKEN)
+  return full
 }
 
-// Returns user if session or API key is valid
 export async function authenticate(request, env, requireApiAccess = false) {
-  // Try API key first
-  const apiUser = await verifyApiKey(request, env)
-  if (apiUser) {
-    if (requireApiAccess && !apiUser.api_access) {
-      return { user: null, error: errRes('API access not approved. Apply via dashboard.', 403) }
+  // Try API key
+  const raw = extractBearer(request)
+  if (raw?.startsWith('vrtx_')) {
+    const hash  = await sha256(raw)
+    const users = await listUsers(env.GITHUB_TOKEN)
+    for (const u of users) {
+      const full = await getUser(u.github_username, env.GITHUB_TOKEN)
+      if (!full) continue
+      if (full.api_key_hash !== hash) continue
+      if (full.suspended) return { user: null, error: errRes('Account suspended', 403) }
+      if (requireApiAccess && !full.api_access) {
+        return { user: null, error: errRes('API access not approved. Apply via dashboard.', 403) }
+      }
+      return { user: full, error: null }
     }
-    return { user: apiUser, error: null }
+    return { user: null, error: errRes('Invalid API key', 401) }
   }
 
   // Try session
   const username = await verifySession(request, env)
   if (!username) return { user: null, error: errRes('Authentication required', 401) }
 
-  const { data: users } = await getRegistry(USERS_DESC, env.GITHUB_TOKEN)
-  const user = users[username]
+  const user = await getUser(username, env.GITHUB_TOKEN)
   if (!user) return { user: null, error: errRes('User not found', 401) }
+  if (user.suspended) return { user: null, error: errRes('Account suspended', 403) }
 
   if (requireApiAccess && !user.api_access) {
     return { user: null, error: errRes('API access not approved. Apply via dashboard.', 403) }
   }
 
-  return { user: { ...user, github_username: username }, error: null }
+  return { user, error: null }
 }
 
-// ── My tunnels ─────────────────────────────────────────────────────────────
-
+// ── My tunnels + profile ───────────────────────────────────────────────────
 export async function handleMyTunnels(request, env) {
   const { user, error } = await authenticate(request, env)
   if (error) return error
 
-  const { data: users } = await getRegistry(USERS_DESC, env.GITHUB_TOKEN)
-  const record = users[user.github_username]
-
   return jsonRes({
-    ok: true,
+    ok:             true,
     github_username: user.github_username,
-    api_access: user.api_access,
-    tunnels: record?.tunnels || [],
-    joined_at: user.joined_at,
+    github_avatar:   user.github_avatar,
+    email:           user.email,
+    api_access:      user.api_access,
+    api_key_hint:    user.api_key_hint,
+    role:            user.role,
+    joined_at:       user.joined_at,
+    last_login:      user.last_login,
+    tunnels:         user.tunnels || [],
+    tunnel_limit:    user.tunnel_limit || 10,
+    suspended:       user.suspended || false,
   })
 }
 
-// ── Apply for API access ───────────────────────────────────────────────────
+// ── Recover API key ────────────────────────────────────────────────────────
+export async function handleRecoverApiKey(request, env) {
+  const { user, error } = await authenticate(request, env)
+  if (error) return error
 
+  if (!user.api_key_encrypted) {
+    return errRes('No encrypted API key found. Please contact support.', 404)
+  }
+
+  const rawKey = await decryptToken(user.api_key_encrypted, env.ENCRYPTION_KEY)
+  return jsonRes({ ok: true, api_key: rawKey, hint: user.api_key_hint })
+}
+
+// ── Apply for API access ───────────────────────────────────────────────────
 export async function handleApplyApiAccess(request, env) {
   const { user, error } = await authenticate(request, env)
   if (error) return error
 
+  const existing = await getPending(user.github_username, env.GITHUB_TOKEN)
+  if (existing && !existing.reviewed) {
+    return jsonRes({ ok: false, message: 'Application already pending review' })
+  }
+
   let body = {}
   try { body = await request.json() } catch {}
 
-  const { data: pending, gist_id: pendingGistId } = await getRegistry(PENDING_DESC, env.GITHUB_TOKEN)
-
-  if (pending[user.github_username]) {
-    return jsonRes({ ok: false, message: 'Application already submitted, pending review' })
-  }
-
-  pending[user.github_username] = {
+  const pending = {
     github_username: user.github_username,
+    github_avatar:   user.github_avatar,
+    email:           user.email,
     reason:          body.reason || 'No reason provided',
     applied_at:      nowISO(),
+    reviewed:        false,
+    reviewed_at:     null,
+    reviewed_by:     null,
+    decision:        null,
   }
 
-  await setRegistry(PENDING_DESC, pending, pendingGistId, env.GITHUB_TOKEN)
-
-  return jsonRes({ ok: true, message: 'Application submitted. Owner will review and approve.' })
+  await savePending(pending, env.GITHUB_TOKEN)
+  return jsonRes({ ok: true, message: 'Application submitted. Owner will review.' })
 }
 
-// ── Admin — list applications ──────────────────────────────────────────────
-
-export async function handleAdminApplications(request, env) {
+// ── Admin — list users ─────────────────────────────────────────────────────
+export async function handleAdminUsers(request, env) {
   if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
 
-  const { data: pending } = await getRegistry(PENDING_DESC, env.GITHUB_TOKEN)
-  const apps = Object.values(pending)
+  const users   = await listUsers(env.GITHUB_TOKEN)
+  const pending = await listPending(env.GITHUB_TOKEN)
+  const pendingSet = new Set(pending.map(p => p.github_username))
 
+  const list = users.map(u => ({
+    github_username:  u.github_username,
+    github_id:        u.github_id,
+    github_avatar:    u.github_avatar,
+    email:            u.email,
+    api_key_hint:     u.api_key_hint,
+    api_access:       u.api_access || false,
+    api_pending:      pendingSet.has(u.github_username),
+    role:             u.role || 'user',
+    joined_at:        u.joined_at,
+    last_login:       u.last_login,
+    tunnel_count:     (u.tunnels || []).length,
+    tunnels:          u.tunnels || [],
+    suspended:        u.suspended || false,
+    suspension_reason: u.suspension_reason || null,
+  }))
+
+  return jsonRes({ ok: true, count: list.length, users: list })
+}
+
+// ── Admin — list pending applications ─────────────────────────────────────
+export async function handleAdminApplications(request, env) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+  const apps = await listPending(env.GITHUB_TOKEN)
   return jsonRes({ ok: true, count: apps.length, applications: apps })
 }
 
 // ── Admin — approve ────────────────────────────────────────────────────────
-
-export async function handleAdminApprove(request, env, githubUsername) {
+export async function handleAdminApprove(request, env, username) {
   if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
 
-  const { data: users,   gist_id: usersGistId   } = await getRegistry(USERS_DESC,   env.GITHUB_TOKEN)
-  const { data: pending, gist_id: pendingGistId  } = await getRegistry(PENDING_DESC, env.GITHUB_TOKEN)
+  const user = await getUser(username, env.GITHUB_TOKEN)
+  if (!user) return errRes('User not found', 404)
 
-  if (!users[githubUsername]) return errRes('User not found', 404)
+  user.api_access = true
+  await saveUser(user, env.GITHUB_TOKEN)
 
-  users[githubUsername].api_access = true
-  delete pending[githubUsername]
+  // Mark pending as reviewed
+  const pending = await getPending(username, env.GITHUB_TOKEN)
+  if (pending) {
+    pending.reviewed    = true
+    pending.reviewed_at = nowISO()
+    pending.reviewed_by = 'owner'
+    pending.decision    = 'approved'
+    await savePending(pending, env.GITHUB_TOKEN)
+  }
 
-  await setRegistry(USERS_DESC,   users,   usersGistId,  env.GITHUB_TOKEN)
-  await setRegistry(PENDING_DESC, pending, pendingGistId, env.GITHUB_TOKEN)
-
-  return jsonRes({ ok: true, message: `API access granted to ${githubUsername}` })
-}
-
-// ── Admin — list all users ─────────────────────────────────────────────────
-
-export async function handleAdminUsers(request, env) {
-  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
-
-  const { data: users }   = await getRegistry(USERS_DESC,   env.GITHUB_TOKEN)
-  const { data: pending } = await getRegistry(PENDING_DESC, env.GITHUB_TOKEN)
-
-  const list = Object.entries(users).map(([username, user]) => ({
-    github_username: username,
-    github_id:       user.github_id,
-    api_access:      user.api_access || false,
-    api_pending:     !!pending[username],
-    tunnel_count:    (user.tunnels || []).length,
-    tunnels:         user.tunnels || [],
-    joined_at:       user.joined_at,
-  }))
-
-  return jsonRes({
-    ok:    true,
-    count: list.length,
-    users: list,
-  })
+  return jsonRes({ ok: true, message: `API access granted to ${username}` })
 }
 
 // ── Admin — revoke ─────────────────────────────────────────────────────────
-
-export async function handleAdminRevoke(request, env, githubUsername) {
+export async function handleAdminRevoke(request, env, username) {
   if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
 
-  const { data: users, gist_id: usersGistId } = await getRegistry(USERS_DESC, env.GITHUB_TOKEN)
-  if (!users[githubUsername]) return errRes('User not found', 404)
+  const user = await getUser(username, env.GITHUB_TOKEN)
+  if (!user) return errRes('User not found', 404)
 
-  users[githubUsername].api_access = false
-  await setRegistry(USERS_DESC, users, usersGistId, env.GITHUB_TOKEN)
+  user.api_access = false
+  await saveUser(user, env.GITHUB_TOKEN)
 
-  return jsonRes({ ok: true, message: `API access revoked from ${githubUsername}` })
+  return jsonRes({ ok: true, message: `API access revoked from ${username}` })
+}
+
+// ── Admin — suspend user ───────────────────────────────────────────────────
+export async function handleAdminSuspend(request, env, username) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+
+  const user = await getUser(username, env.GITHUB_TOKEN)
+  if (!user) return errRes('User not found', 404)
+
+  let body = {}
+  try { body = await request.json() } catch {}
+
+  user.suspended         = true
+  user.suspension_reason = body.reason || 'Suspended by owner'
+  await saveUser(user, env.GITHUB_TOKEN)
+
+  return jsonRes({ ok: true, message: `${username} suspended` })
+}
+
+// ── Admin — unsuspend user ─────────────────────────────────────────────────
+export async function handleAdminUnsuspend(request, env, username) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+
+  const user = await getUser(username, env.GITHUB_TOKEN)
+  if (!user) return errRes('User not found', 404)
+
+  user.suspended         = false
+  user.suspension_reason = null
+  await saveUser(user, env.GITHUB_TOKEN)
+
+  return jsonRes({ ok: true, message: `${username} unsuspended` })
+}
+
+// ── Admin — debug ──────────────────────────────────────────────────────────
+export async function handleAdminDebug(request, env) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+  const gists = await debugListAllGists(env.GITHUB_TOKEN)
+  return jsonRes({ ok: true, gists })
 }
 
 // ── Session helpers ────────────────────────────────────────────────────────
-
 async function createSession(username, githubId, secret) {
   const payload = btoa(JSON.stringify({ username, githubId, iat: Date.now() }))
   const sig     = await hmacSign(payload, secret)
   return `${payload}.${sig}`
 }
 
-async function verifySession_(token, secret) {
+async function verifySessionToken(token, secret) {
   const parts = token.split('.')
   if (parts.length !== 2) return null
   const [payload, sig] = parts
@@ -305,7 +387,6 @@ async function verifySession_(token, secret) {
   if (sig !== expected) return null
   try {
     const data = JSON.parse(atob(payload))
-    // Session valid for 30 days
     if (Date.now() - data.iat > 30 * 86400000) return null
     return data.username
   } catch { return null }
@@ -321,8 +402,8 @@ async function hmacSign(data, secret) {
 }
 
 function parseCookies(request) {
-  const header  = request.headers.get('Cookie') || ''
   const cookies = {}
+  const header  = request.headers.get('Cookie') || ''
   header.split(';').forEach(part => {
     const [k, ...v] = part.trim().split('=')
     if (k) cookies[k.trim()] = v.join('=').trim()
@@ -331,32 +412,5 @@ function parseCookies(request) {
 }
 
 function verifyOwnerToken(request, env) {
-  const token = extractBearer(request)
-  return token && token === env.OWNER_TOKEN
-}
-
-// ── Admin — debug (list all gists) ────────────────────────────────────────
-export async function handleAdminDebug(request, env) {
-  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
-  const { debugListGists } = await import('./gist.js')
-  const gists = await debugListGists(env.GITHUB_TOKEN)
-  return jsonRes({ ok: true, gists })
-}
-
-// ── Admin — migrate all Gists from TOON to JSON ───────────────────────────
-export async function handleAdminMigrate(request, env) {
-  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
-
-  const { debugListGists, migrateGistToJson } = await import('./gist.js')
-  const gists   = await debugListGists(env.GITHUB_TOKEN)
-  const results = []
-
-  for (const g of gists) {
-    if (!g.description?.startsWith('vortex:')) continue
-    if (!g.files.includes('data.toon')) continue
-    const result = await migrateGistToJson(g.id, env.GITHUB_TOKEN)
-    results.push({ id: g.id, description: g.description, ...result })
-  }
-
-  return jsonRes({ ok: true, migrated: results.length, results })
+  return extractBearer(request) === env.OWNER_TOKEN
 }
