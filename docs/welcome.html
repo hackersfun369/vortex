@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex — Welcome! Save your API key</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+  .welcome-wrap {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .welcome-card {
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    padding: 2.5rem;
+    max-width: 560px;
+    width: 100%;
+  }
+  .welcome-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+  .welcome-card h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+  .welcome-card .sub { color: var(--muted); margin-bottom: 2rem; font-size: 0.95rem; }
+  .key-box {
+    background: var(--surface2);
+    border: 2px solid rgba(124,109,250,0.4);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    margin-bottom: 1.5rem;
+  }
+  .key-label {
+    font-size: 0.75rem;
+    color: var(--accent2);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  .key-value {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    color: var(--text);
+    word-break: break-all;
+    display: block;
+    margin-bottom: 0.8rem;
+    line-height: 1.6;
+  }
+  .key-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .copy-big {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: opacity .2s;
+    font-family: var(--sans);
+  }
+  .copy-big:hover { opacity: 0.85; }
+  .warning-box {
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.3);
+    border-radius: 10px;
+    padding: 1rem 1.2rem;
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+    color: var(--yellow);
+    line-height: 1.6;
+  }
+  .warning-box strong { display: block; margin-bottom: 0.3rem; font-size: 0.95rem; }
+  .checklist { margin-bottom: 2rem; }
+  .check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.9rem;
+    color: var(--muted);
+    cursor: pointer;
+    transition: color .2s;
+  }
+  .check-item:last-child { border-bottom: none; }
+  .check-item input[type="checkbox"] { 
+    width: 18px; height: 18px; 
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .check-item.checked { color: var(--text); }
+  .proceed-btn {
+    width: 100%;
+    padding: 0.9rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-family: var(--sans);
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity .2s;
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .proceed-btn.ready { opacity: 1; pointer-events: all; }
+  .proceed-btn.ready:hover { opacity: 0.85; }
+  .use-example {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.8;
+  }
+  .use-example span { color: var(--accent2); }
+</style>
+</head>
+<body>
+<div class="welcome-wrap">
+  <div class="welcome-card">
+    <div class="welcome-icon">🔑</div>
+    <h1>Welcome to Vortex!</h1>
+    <p class="sub">Your account is ready. Here is your API key — it is shown <strong style="color:var(--text)">only once</strong>. Save it before continuing.</p>
+
+    <div class="key-box">
+      <span class="key-label">Your API key</span>
+      <span class="key-value" id="apikey-display">Loading...</span>
+      <div class="key-actions">
+        <button class="copy-big" onclick="copyKey()">Copy key</button>
+        <button class="copy-big" style="background:var(--surface);border:1px solid var(--border2);color:var(--muted)" onclick="downloadKey()">Download as .txt</button>
+      </div>
+    </div>
+
+    <div class="warning-box">
+      <strong>⚠ This key will not be shown again</strong>
+      You can recover it later via the dashboard or API, but only if you are logged in. Store it somewhere safe — password manager, notes app, or a secure file.
+    </div>
+
+    <div class="use-example">
+      <span style="color:var(--green)">// Use with CLI</span><br>
+      <span>vortex 3000 -k <span id="key-cli">your-key</span></span><br><br>
+      <span style="color:var(--green)">// Use with API</span><br>
+      <span>Authorization: Bearer <span id="key-api">your-key</span></span>
+    </div>
+
+    <div class="checklist">
+      <label class="check-item" id="check1" onclick="toggleCheck(1)">
+        <input type="checkbox" id="cb1">
+        I have copied my API key to a safe place
+      </label>
+      <label class="check-item" id="check2" onclick="toggleCheck(2)">
+        <input type="checkbox" id="cb2">
+        I understand this key authenticates me — keep it private
+      </label>
+      <label class="check-item" id="check3" onclick="toggleCheck(3)">
+        <input type="checkbox" id="cb3">
+        I know I can recover it from my dashboard if needed
+      </label>
+    </div>
+
+    <button class="proceed-btn" id="proceed-btn" onclick="proceed()">
+      I've saved my key — go to dashboard →
+    </button>
+  </div>
+</div>
+
+<script>
+  const hash    = window.location.hash
+  const params  = new URLSearchParams(hash.slice(1))
+  const apiKey  = params.get('apikey') || ''
+
+  if (!apiKey) {
+    // No key in URL — already a returning user, redirect to dashboard
+    window.location.replace('/vortex/dashboard.html')
+  }
+
+  document.getElementById('apikey-display').textContent = apiKey
+  document.getElementById('key-cli').textContent        = apiKey
+  document.getElementById('key-api').textContent        = apiKey
+
+  // Clear key from URL bar immediately (security)
+  history.replaceState(null, '', window.location.pathname)
+
+  let checked = { 1: false, 2: false, 3: false }
+
+  function toggleCheck(n) {
+    checked[n] = !checked[n]
+    const item = document.getElementById('check' + n)
+    const cb   = document.getElementById('cb' + n)
+    cb.checked = checked[n]
+    item.classList.toggle('checked', checked[n])
+    const allChecked = Object.values(checked).every(Boolean)
+    document.getElementById('proceed-btn').classList.toggle('ready', allChecked)
+  }
+
+  function copyKey() {
+    navigator.clipboard.writeText(apiKey)
+    const btn = event.target
+    btn.textContent = 'Copied!'
+    setTimeout(() => btn.textContent = 'Copy key', 2000)
+  }
+
+  function downloadKey() {
+    const content = [
+      'Vortex API Key',
+      '==============',
+      '',
+      'API Key: ' + apiKey,
+      '',
+      'Base URL: https://vortex-api.guessmesir-007.workers.dev',
+      '',
+      'Usage:',
+      '  CLI:  vortex 3000 -k ' + apiKey,
+      '  API:  Authorization: Bearer ' + apiKey,
+      '',
+      'Keep this file secure. Do not share it.',
+      'Generated: ' + new Date().toISOString(),
+    ].join('\n')
+
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href     = url
+    a.download = 'vortex-apikey.txt'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function proceed() {
+    window.location.replace('/vortex/dashboard.html')
+  }
+</script>
+</body>
+</html>

@@ -115,8 +115,9 @@ export async function handleAuthCallback(request, env) {
   // Create session
   const session = await createSession(username, String(profile.id), env.SESSION_SECRET)
 
-  const dashUrl = `https://${env.PAGES_DOMAIN}/dashboard.html`
-  const dest    = isNewUser ? `${dashUrl}#apikey=${rawApiKey}` : dashUrl
+  const dashUrl    = `https://${env.PAGES_DOMAIN}/dashboard.html`
+  const welcomeUrl = `https://${env.PAGES_DOMAIN}/welcome.html`
+  const dest       = isNewUser ? `${welcomeUrl}#apikey=${rawApiKey}` : dashUrl
 
   return new Response(null, {
     status: 302,
