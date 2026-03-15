@@ -5,6 +5,7 @@ import {
   handleAuthGitHub, handleAuthCallback, handleLogout,
   handleMyTunnels, handleApplyApiAccess,
   handleAdminApplications, handleAdminApprove, handleAdminRevoke,
+  handleAdminUsers,
 } from './auth.js'
 import {
   handleCreate, handleDelete, handleGet,
@@ -65,6 +66,7 @@ export default {
 
       // ── Admin (owner only) ────────────────────────────────────────────
       if (method === 'GET'    && path === '/admin/applications')        return handleAdminApplications(request, env)
+      if (method === 'GET'    && path === '/admin/users')               return handleAdminUsers(request, env)
       if (method === 'POST'   && path.startsWith('/admin/approve/')) {
         const username = path.split('/admin/approve/')[1]
         return handleAdminApprove(request, env, username)
