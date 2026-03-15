@@ -1,4 +1,3 @@
-// v2.0.0 - full rewrite
 // tunnel.js — tunnel CRUD, heartbeat, expiry sweep
 
 import {
@@ -29,7 +28,7 @@ export async function handleCreate(request, env) {
   let authUser = null
   const bearer = extractBearer(request)
   if (bearer?.startsWith('vrtx_')) {
-    const { user } = await authenticate(request, env, true)
+    const { user } = await authenticate(request, env)
     authUser = user
   }
 
@@ -267,4 +266,3 @@ async function unlinkTunnelFromUser(sub, username, env) {
   user.tunnels = (user.tunnels || []).filter(s => s !== sub)
   await saveUser(user, env.GITHUB_TOKEN)
 }
-
