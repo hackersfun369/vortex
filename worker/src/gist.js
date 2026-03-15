@@ -123,10 +123,40 @@ export async function listPublicTunnels(token) {
 // ── Registry Gist helpers (users / pending / approved) ───────────────────
 
 export async function getRegistry(description, token) {
-  const gist = await findGistByDescription(description, token)
-  if (!gist) return { data: {}, gist_id: null }
-  const raw  = gist.files?.[FILENAME]?.content
-  return { data: raw ? decodeTOON(raw) : {}, gist_id: gist.id }
+  try {
+    const gist = await findGistByDescription(description, token)
+    if (!gist) return { data: {}, gist_id: null }
+    const raw  = gist.files?.[FILENAME]?.content
+    if (!raw) return { data: {}, gist_id: gist.id }
+    const decoded = decodeTOON(raw)
+    return { data: decoded || {}, gist_id: gist.id }
+  } catch (err) {
+    console.error('[vortex] getRegistry error:', err.message)
+    return { data: {}, gist_id: null }
+  }
+}
+
+export async function debugListGists(token) {
+  try {
+    const res = await fetch('https://api.github.com/gists?per_page=100', {
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept':        'application/vnd.github.v3+json',
+        'User-Agent':    'vortex-tunnel-service',
+      },
+    })
+    const gists = await res.json()
+    if (!Array.isArray(gists)) return { error: gists }
+    return gists.map(g => ({
+      id:          g.id,
+      description: g.description,
+      public:      g.public,
+      updated_at:  g.updated_at,
+      files:       Object.keys(g.files || {}),
+    }))
+  } catch(err) {
+    return { error: err.message }
+  }
 }
 
 export async function setRegistry(description, data, gistId, token) {
