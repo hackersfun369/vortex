@@ -1,15 +1,13 @@
-// gist.js — GitHub Gist storage layer (TOON format)
-
-import { encodeTOON, decodeTOON } from './utils.js'
+// gist.js — GitHub Gist storage layer (JSON format)
 
 // ── Gist descriptions used as lookup keys ─────────────────────────────────
-export const GIST_PREFIX      = 'vortex:tunnel:'
-export const USERS_DESC       = 'vortex:registry:users'
-export const PENDING_DESC     = 'vortex:registry:pending'
-export const APPROVED_DESC    = 'vortex:registry:approved'
-export const FILENAME         = 'data.toon'
+export const GIST_PREFIX   = 'vortex:tunnel:'
+export const USERS_DESC    = 'vortex:registry:users'
+export const PENDING_DESC  = 'vortex:registry:pending'
+export const APPROVED_DESC = 'vortex:registry:approved'
+export const FILENAME      = 'data.json'
 
-// ── Core Gist API wrapper ─────────────────────────────────────────────────
+// ── Core Gist API wrapper ──────────────────────────────────────────────────
 async function gistRequest(method, path, body, token) {
   const res = await fetch(`https://api.github.com/gists${path}`, {
     method,
@@ -28,37 +26,36 @@ async function gistRequest(method, path, body, token) {
   return res.status === 204 ? null : res.json()
 }
 
-// ── Create a Gist ─────────────────────────────────────────────────────────
+// ── Create a Gist ──────────────────────────────────────────────────────────
 export async function createGist(description, data, isPublic, token) {
-  const content = encodeTOON(data)
   return gistRequest('POST', '', {
     description,
     public: isPublic,
-    files: { [FILENAME]: { content } },
+    files: { [FILENAME]: { content: JSON.stringify(data, null, 2) } },
   }, token)
 }
 
-// ── Update a Gist ─────────────────────────────────────────────────────────
+// ── Update a Gist ──────────────────────────────────────────────────────────
 export async function updateGist(gistId, data, token) {
-  const content = encodeTOON(data)
   return gistRequest('PATCH', `/${gistId}`, {
-    files: { [FILENAME]: { content } },
+    files: { [FILENAME]: { content: JSON.stringify(data, null, 2) } },
   }, token)
 }
 
-// ── Delete a Gist ─────────────────────────────────────────────────────────
+// ── Delete a Gist ──────────────────────────────────────────────────────────
 export async function deleteGist(gistId, token) {
   return gistRequest('DELETE', `/${gistId}`, null, token)
 }
 
-// ── Get a Gist by ID ──────────────────────────────────────────────────────
+// ── Get a Gist by ID ───────────────────────────────────────────────────────
 export async function getGistById(gistId, token) {
   const gist = await gistRequest('GET', `/${gistId}`, null, token)
   const raw  = gist?.files?.[FILENAME]?.content
-  return raw ? decodeTOON(raw) : null
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
 }
 
-// ── List all Gists and find by description ────────────────────────────────
+// ── Find Gist by description ───────────────────────────────────────────────
 export async function findGistByDescription(description, token) {
   let page = 1
   while (true) {
@@ -71,15 +68,18 @@ export async function findGistByDescription(description, token) {
   }
 }
 
-// ── Tunnel-specific helpers ───────────────────────────────────────────────
-
+// ── Tunnel helpers ─────────────────────────────────────────────────────────
 export async function getTunnel(subdomain, token) {
   const desc = `${GIST_PREFIX}${subdomain}`
   const gist = await findGistByDescription(desc, token)
   if (!gist) return null
-  const raw = gist.files?.[FILENAME]?.content
-  const data = raw ? decodeTOON(raw) : null
-  return data ? { ...data, gist_id: gist.id } : null
+  const full = await gistRequest('GET', `/${gist.id}`, null, token)
+  const raw  = full?.files?.[FILENAME]?.content
+  if (!raw) return null
+  try {
+    const data = JSON.parse(raw)
+    return { ...data, gist_id: gist.id }
+  } catch { return null }
 }
 
 export async function createTunnel(data, isPublic, token) {
@@ -106,13 +106,16 @@ export async function listPublicTunnels(token) {
     for (const g of gists) {
       if (!g.description?.startsWith(GIST_PREFIX)) continue
       if (!g.public) continue
-      const raw = g.files?.[FILENAME]?.content
-      if (!raw) continue
-      const data = decodeTOON(raw)
-      if (data?.status === 'active') {
-        const { token_hash: _t, ...safe } = data
-        tunnels.push({ ...safe, gist_id: g.id })
-      }
+      try {
+        const full = await gistRequest('GET', `/${g.id}`, null, token)
+        const raw  = full?.files?.[FILENAME]?.content
+        if (!raw) continue
+        const data = JSON.parse(raw)
+        if (data?.status === 'active') {
+          const { token_hash: _t, ...safe } = data
+          tunnels.push({ ...safe, gist_id: g.id })
+        }
+      } catch { continue }
     }
     if (gists.length < 100) break
     page++
@@ -120,20 +123,30 @@ export async function listPublicTunnels(token) {
   return tunnels
 }
 
-// ── Registry Gist helpers (users / pending / approved) ───────────────────
-
+// ── Registry helpers ───────────────────────────────────────────────────────
 export async function getRegistry(description, token) {
   try {
     const gist = await findGistByDescription(description, token)
     if (!gist) return { data: {}, gist_id: null }
-    const raw  = gist.files?.[FILENAME]?.content
+    const full = await gistRequest('GET', `/${gist.id}`, null, token)
+    const raw  = full?.files?.[FILENAME]?.content
     if (!raw) return { data: {}, gist_id: gist.id }
-    const decoded = decodeTOON(raw)
-    return { data: decoded || {}, gist_id: gist.id }
+    const data = JSON.parse(raw)
+    return { data: data || {}, gist_id: gist.id }
   } catch (err) {
     console.error('[vortex] getRegistry error:', err.message)
     return { data: {}, gist_id: null }
   }
+}
+
+export async function setRegistry(description, data, gistId, token) {
+  if (gistId) {
+    await updateGist(gistId, data, token)
+  } else {
+    const gist = await createGist(description, data, false, token)
+    return gist.id
+  }
+  return gistId
 }
 
 export async function debugListGists(token) {
@@ -159,12 +172,27 @@ export async function debugListGists(token) {
   }
 }
 
-export async function setRegistry(description, data, gistId, token) {
-  if (gistId) {
-    await updateGist(gistId, data, token)
-  } else {
-    const gist = await createGist(description, data, false, token)
-    return gist.id
+// ── Migration: convert old TOON Gist to JSON ───────────────────────────────
+export async function migrateGistToJson(gistId, token) {
+  try {
+    const gist = await gistRequest('GET', `/${gistId}`, null, token)
+    // Check if it has old data.toon file
+    const toonRaw = gist?.files?.['data.toon']?.content
+    if (!toonRaw) return { skipped: true }
+
+    // Simple TOON to JSON migration using the decoder
+    const { decodeTOON } = await import('./utils.js')
+    const data = decodeTOON(toonRaw)
+
+    // Update Gist with JSON file, remove TOON file
+    await gistRequest('PATCH', `/${gistId}`, {
+      files: {
+        'data.toon': null,                              // delete old file
+        [FILENAME]:  { content: JSON.stringify(data, null, 2) }, // create new
+      },
+    }, token)
+    return { migrated: true, data }
+  } catch (err) {
+    return { error: err.message }
   }
-  return gistId
 }
