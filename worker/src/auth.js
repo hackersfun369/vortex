@@ -342,3 +342,21 @@ export async function handleAdminDebug(request, env) {
   const gists = await debugListGists(env.GITHUB_TOKEN)
   return jsonRes({ ok: true, gists })
 }
+
+// ── Admin — migrate all Gists from TOON to JSON ───────────────────────────
+export async function handleAdminMigrate(request, env) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+
+  const { debugListGists, migrateGistToJson } = await import('./gist.js')
+  const gists   = await debugListGists(env.GITHUB_TOKEN)
+  const results = []
+
+  for (const g of gists) {
+    if (!g.description?.startsWith('vortex:')) continue
+    if (!g.files.includes('data.toon')) continue
+    const result = await migrateGistToJson(g.id, env.GITHUB_TOKEN)
+    results.push({ id: g.id, description: g.description, ...result })
+  }
+
+  return jsonRes({ ok: true, migrated: results.length, results })
+}
