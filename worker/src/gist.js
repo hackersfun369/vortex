@@ -1,4 +1,3 @@
-// v2.0.0 - full rewrite
 // gist.js — GitHub Gist storage, one Gist per record, pure JSON
 
 // ── Gist description prefixes ──────────────────────────────────────────────
@@ -74,22 +73,45 @@ async function deleteGist(id, token) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 export async function getTunnel(subdomain, token) {
-  const id = await findId(`${PREFIX_TUNNEL}${subdomain}`, token)
-  if (!id) return null
-  const data = await readGist(id, token)
-  return data ? { ...data, _gist_id: id } : null
+  const desc = `${PREFIX_TUNNEL}${subdomain}`
+  // Fetch list and find matching gist
+  let page = 1
+  while (true) {
+    const list = await gh('GET', `?per_page=100&page=${page}`, null, token)
+    if (!list?.length) return null
+    const g = list.find(g => g.description === desc)
+    if (g) {
+      // Try content from list first
+      const raw = g.files?.[FILENAME]?.content
+      if (raw) {
+        try {
+          const data = JSON.parse(raw)
+          return { ...data, _gist_id: g.id }
+        } catch {}
+      }
+      // Content truncated — fetch full gist
+      const data = await readGist(g.id, token)
+      return data ? { ...data, _gist_id: g.id } : null
+    }
+    if (list.length < 100) return null
+    page++
+  }
 }
 
 export async function saveTunnel(data, token) {
-  const desc    = `${PREFIX_TUNNEL}${data.subdomain}`
+  const desc     = `${PREFIX_TUNNEL}${data.subdomain}`
   const isPublic = !data.private
-  const existing = await findId(desc, token)
-  if (existing) {
-    await writeGist(existing, data, token)
-    return { ...data, _gist_id: existing }
+  const gistId   = data._gist_id || await findId(desc, token)
+
+  if (gistId) {
+    const { _gist_id: _g, ...clean } = data
+    await writeGist(gistId, clean, token)
+    return { ...clean, _gist_id: gistId }
   }
-  const id = await createGist(desc, data, isPublic, token)
-  return { ...data, _gist_id: id }
+
+  const { _gist_id: _g, ...clean } = data
+  const id = await createGist(desc, clean, isPublic, token)
+  return { ...clean, _gist_id: id }
 }
 
 export async function deleteTunnel(subdomain, token) {
@@ -106,11 +128,17 @@ export async function listPublicTunnels(token) {
     for (const g of list) {
       if (!g.description?.startsWith(PREFIX_TUNNEL)) continue
       if (!g.public) continue
-      const data = await readGist(g.id, token)
-      if (data?.status === 'active') {
-        const { token_hash: _h, token_encrypted: _e, ...safe } = data
-        tunnels.push({ ...safe, _gist_id: g.id })
-      }
+      // Use content from list response directly — avoids extra API calls
+      // GitHub list API includes file content for small files
+      const raw = g.files?.[FILENAME]?.content
+      if (!raw) continue
+      try {
+        const data = JSON.parse(raw)
+        if (data?.status === 'active') {
+          const { token_hash: _h, token_encrypted: _e, ...safe } = data
+          tunnels.push({ ...safe, _gist_id: g.id })
+        }
+      } catch { continue }
     }
     if (list.length < 100) break
     page++
@@ -130,14 +158,22 @@ export async function getUser(username, token) {
 }
 
 export async function saveUser(data, token) {
-  const desc     = `${PREFIX_USER}${data.github_username}`
-  const existing = await findId(desc, token)
-  if (existing) {
-    await writeGist(existing, data, token)
-    return { ...data, _gist_id: existing }
+  const desc = `${PREFIX_USER}${data.github_username}`
+
+  // Use cached _gist_id if present to avoid duplicate search
+  const gistId = data._gist_id || await findId(desc, token)
+
+  if (gistId) {
+    // Strip internal field before saving
+    const { _gist_id: _g, ...clean } = data
+    await writeGist(gistId, clean, token)
+    return { ...clean, _gist_id: gistId }
   }
-  const id = await createGist(desc, data, false, token)
-  return { ...data, _gist_id: id }
+
+  // New user — create Gist
+  const { _gist_id: _g, ...clean } = data
+  const id = await createGist(desc, clean, false, token)
+  return { ...clean, _gist_id: id }
 }
 
 export async function listUsers(token) {
@@ -172,14 +208,18 @@ export async function getPending(username, token) {
 }
 
 export async function savePending(data, token) {
-  const desc     = `${PREFIX_PENDING}${data.github_username}`
-  const existing = await findId(desc, token)
-  if (existing) {
-    await writeGist(existing, data, token)
-    return { ...data, _gist_id: existing }
+  const desc   = `${PREFIX_PENDING}${data.github_username}`
+  const gistId = data._gist_id || await findId(desc, token)
+
+  if (gistId) {
+    const { _gist_id: _g, ...clean } = data
+    await writeGist(gistId, clean, token)
+    return { ...clean, _gist_id: gistId }
   }
-  const id = await createGist(desc, data, false, token)
-  return { ...data, _gist_id: id }
+
+  const { _gist_id: _g, ...clean } = data
+  const id = await createGist(desc, clean, false, token)
+  return { ...clean, _gist_id: id }
 }
 
 export async function deletePending(username, token) {
@@ -224,3 +264,28 @@ export async function debugListAllGists(token) {
   }
 }
 
+// ── Get all tunnels for a specific user ────────────────────────────────────
+export async function getTunnelsByUser(username, token) {
+  let page = 1
+  const tunnels = []
+  while (true) {
+    const list = await gh('GET', `?per_page=100&page=${page}`, null, token)
+    if (!list?.length) break
+    for (const g of list) {
+      if (!g.description?.startsWith(PREFIX_TUNNEL)) continue
+      try {
+        // Use list content directly
+        const raw = g.files?.[FILENAME]?.content
+        if (!raw) continue
+        const data = JSON.parse(raw)
+        if (data?.github_username === username) {
+          const { token_hash: _h, token_encrypted: _e, ...safe } = data
+          tunnels.push({ ...safe, _gist_id: g.id })
+        }
+      } catch { continue }
+    }
+    if (list.length < 100) break
+    page++
+  }
+  return tunnels
+}
