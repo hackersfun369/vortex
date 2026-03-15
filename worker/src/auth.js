@@ -97,7 +97,7 @@ export async function handleAuthCallback(request, env) {
   // Create signed session JWT (simple, no library needed)
   const session = await createSession(githubUsername, githubId, env.SESSION_SECRET)
 
-  const redirectUrl = `https://${env.BASE_DOMAIN}/dashboard`
+  const redirectUrl = `https://hackersfun369.github.io/vortex/dashboard.html`
   const headers = {
     'Location': redirectUrl,
     'Set-Cookie': [
