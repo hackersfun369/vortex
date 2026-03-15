@@ -250,6 +250,31 @@ export async function handleAdminApprove(request, env, githubUsername) {
   return jsonRes({ ok: true, message: `API access granted to ${githubUsername}` })
 }
 
+// ── Admin — list all users ─────────────────────────────────────────────────
+
+export async function handleAdminUsers(request, env) {
+  if (!verifyOwnerToken(request, env)) return errRes('Unauthorized', 401)
+
+  const { data: users }   = await getRegistry(USERS_DESC,   env.GITHUB_TOKEN)
+  const { data: pending } = await getRegistry(PENDING_DESC, env.GITHUB_TOKEN)
+
+  const list = Object.entries(users).map(([username, user]) => ({
+    github_username: username,
+    github_id:       user.github_id,
+    api_access:      user.api_access || false,
+    api_pending:     !!pending[username],
+    tunnel_count:    (user.tunnels || []).length,
+    tunnels:         user.tunnels || [],
+    joined_at:       user.joined_at,
+  }))
+
+  return jsonRes({
+    ok:    true,
+    count: list.length,
+    users: list,
+  })
+}
+
 // ── Admin — revoke ─────────────────────────────────────────────────────────
 
 export async function handleAdminRevoke(request, env, githubUsername) {
