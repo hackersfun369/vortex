@@ -6,192 +6,242 @@
 <title>Vortex Portal — Create a Tunnel</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="/vortex/css/style.css">
+<style>
+.portal-wrap { max-width:580px; margin:3rem auto; padding:0 1.5rem; }
+.optional-section { border:1px solid var(--border); border-radius:10px; padding:1rem 1.2rem; margin-bottom:1.5rem; }
+.optional-toggle { background:none; border:none; color:var(--muted); font-size:0.85rem; cursor:pointer; padding:0; display:flex; align-items:center; gap:0.5rem; font-family:var(--sans); width:100%; }
+.optional-toggle:hover { color:var(--text); }
+.optional-fields { display:none; margin-top:1rem; }
+.optional-fields.open { display:block; }
+.result-card { background:var(--surface); border:1px solid rgba(52,212,124,0.3); border-radius:14px; padding:1.8rem; display:none; }
+.result-label { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; display:block; margin-bottom:0.3rem; }
+.result-value { font-family:var(--mono); font-size:0.88rem; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.7rem 1rem; display:flex; align-items:flex-start; justify-content:space-between; gap:0.5rem; word-break:break-all; }
+.token-warning { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); border-radius:8px; padding:0.8rem 1rem; font-size:0.85rem; color:var(--yellow); margin-bottom:1.2rem; }
+.pulse { width:10px; height:10px; border-radius:50%; background:var(--green); animation:pulse 2s infinite; }
+@keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(52,212,124,0.4)} 70%{box-shadow:0 0 0 8px rgba(52,212,124,0)} 100%{box-shadow:0 0 0 0 rgba(52,212,124,0)} }
+</style>
 </head>
 <body>
 <nav class="nav">
-  <a href="/" class="nav-logo">⬡ vortex</a>
+  <a href="/vortex/" class="nav-logo">⬡ vortex</a>
   <div class="nav-links">
-    <a href="/vortex/portal" class="active">portal</a>
-    <a href="/vortex/docs">docs</a>
-    <a href="/vortex/live">live</a>
-    <a href="https://vortex-api.guessmesir-007.workers.dev/auth/github" class="btn-nav">sign in</a>
+    <a href="/vortex/portal.html" class="active">portal</a>
+    <a href="/vortex/docs.html">docs</a>
+    <a href="/vortex/live.html">live</a>
+    <img id="nav-avatar" src="" alt="" class="hidden" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border2)">
+    <span id="nav-user" class="nav-user hidden"></span>
+    <a href="/vortex/dashboard.html" id="nav-dashboard" class="btn-nav hidden">dashboard</a>
+    <a id="nav-signin" href="#" onclick="goSignIn()" class="btn-nav">sign in</a>
+    <button id="nav-signout" onclick="signOut()" class="btn-nav-ghost hidden">sign out</button>
   </div>
 </nav>
 
-<main class="portal-main">
-  <div class="portal-card" id="create-form">
-    <h1>Create a tunnel</h1>
+<div class="portal-wrap">
+  <div id="create-form" class="portal-card">
+    <h1 style="margin-bottom:0.4rem">Create a tunnel</h1>
     <p class="portal-sub">No installation needed — fill in the form, copy one command, run it.</p>
 
     <div class="form-group">
       <label for="port">Local port <span class="required">*</span></label>
-      <input type="number" id="port" placeholder="3000" min="1" max="65535">
+      <input type="number" id="port" placeholder="3000" min="1" max="65535" autofocus>
       <span class="hint">the port your local server is running on</span>
     </div>
 
     <div class="form-group">
       <label for="subdomain">Subdomain <span class="optional">(optional)</span></label>
       <div class="subdomain-input">
-        <input type="text" id="subdomain" placeholder="myapp" pattern="[a-z0-9\-]+" maxlength="63">
-        <span class="subdomain-suffix">.hackersfun369.github.io</span>
+        <input type="text" id="subdomain" placeholder="myapp" maxlength="63"
+          oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9\-]/g,'')">
+        <span class="subdomain-suffix" style="font-size:0.75rem">.vortex-api.guessmesir-007.workers.dev</span>
       </div>
       <span class="hint">leave empty for a random name like swift-river-4821</span>
     </div>
 
-    <div class="form-group">
-      <label class="toggle-label">
-        <input type="checkbox" id="privacy">
-        <span class="toggle"></span>
-        Private mode <span class="hint-inline">— no logs, not listed publicly</span>
-      </label>
+    <div class="optional-section">
+      <button class="optional-toggle" onclick="toggleOpts(this)">
+        <span id="opts-arrow">▶</span> Advanced options
+      </button>
+      <div class="optional-fields" id="opts-fields">
+        <div class="form-group" style="margin-top:0.8rem">
+          <label class="toggle-label">
+            <input type="checkbox" id="privacy"><span class="toggle"></span>
+            <span>Private mode <span class="hint-inline">— not listed publicly, no logs</span></span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="toggle-label">
+            <input type="checkbox" id="reserve" onchange="toggleReserve(this)"><span class="toggle"></span>
+            <span>Reserve subdomain <span class="hint-inline">— permanent, requires API key</span></span>
+          </label>
+        </div>
+        <div class="form-group" id="apikey-group" style="display:none">
+          <label for="apikey">API key <span class="required">*</span></label>
+          <input type="text" id="apikey" placeholder="vrtx_yourkey">
+          <span class="hint">required for reservation · <a href="/vortex/dashboard.html">get your key →</a></span>
+        </div>
+        <div class="form-group">
+          <label>Metadata <span class="optional">(optional)</span></label>
+          <div style="display:flex;gap:0.5rem">
+            <input type="text" id="meta-key" placeholder="key" style="flex:1">
+            <input type="text" id="meta-val" placeholder="value" style="flex:2">
+          </div>
+        </div>
+      </div>
     </div>
 
     <div id="error-box" class="error-box hidden"></div>
-
-    <button id="create-btn" onclick="createTunnel()" class="btn-primary full-width">
-      Create tunnel
-    </button>
+    <button id="create-btn" onclick="createTunnel()" class="btn-primary full-width">Create tunnel</button>
+    <p style="text-align:center;margin-top:1rem;font-size:0.82rem;color:var(--muted)">
+      Have an account? <a href="/vortex/dashboard.html">Go to dashboard →</a>
+    </p>
   </div>
 
-  <!-- Result box (hidden until tunnel created) -->
-  <div class="portal-card result-card hidden" id="result-card">
-    <div class="result-status">
-      <span class="status-dot green"></span>
-      <span class="status-text">Tunnel registered</span>
+  <div class="result-card" id="result-card">
+    <div style="display:flex;align-items:center;gap:0.8rem;margin-bottom:1.5rem">
+      <div class="pulse"></div>
+      <span style="font-weight:500">Tunnel registered</span>
+      <span id="res-private" style="display:none;font-size:0.78rem;color:var(--muted);margin-left:auto">🔒 private</span>
+      <span id="res-reserved" style="display:none;font-size:0.78rem;color:var(--accent2);margin-left:auto">⭐ reserved</span>
     </div>
 
-    <div class="result-url">
-      <span class="result-label">Your tunnel URL</span>
-      <div class="copy-row">
-        <a id="tunnel-url" href="#" target="_blank" class="tunnel-url-link"></a>
-        <button onclick="copyText('tunnel-url-text')" class="copy-btn-sm">copy</button>
-        <span id="tunnel-url-text" class="hidden"></span>
+    <div style="margin-bottom:1.2rem">
+      <span class="result-label">Tunnel URL</span>
+      <div class="result-value">
+        <a id="res-url" href="#" target="_blank" style="color:var(--accent2)"></a>
+        <button class="copy-btn-sm" onclick="cp('res-url','textContent')">copy</button>
       </div>
     </div>
 
-    <div class="result-section">
-      <span class="result-label">Run this command on your machine</span>
-      <div class="code-block">
-        <code id="cf-cmd"></code>
-        <button onclick="copyText('cf-cmd')" class="copy-btn-sm">copy</button>
-      </div>
-      <span class="hint">this connects your local port to the tunnel URL above</span>
-    </div>
-
-    <div class="result-section">
-      <span class="result-label">Don't have cloudflared? Install everything with:</span>
-      <div class="code-block">
-        <code id="install-cmd">curl -fsSL https://hackersfun369.github.io/install.sh | sh</code>
-        <button onclick="copyText('install-cmd')" class="copy-btn-sm">copy</button>
+    <div style="margin-bottom:1.2rem">
+      <span class="result-label">Run this on your machine</span>
+      <div class="result-value" style="flex-direction:column;align-items:flex-start">
+        <code id="res-cmd" style="color:var(--accent2);line-height:1.6;word-break:break-all"></code>
+        <button class="copy-btn-sm" style="margin-top:0.5rem" onclick="cp('res-cmd','textContent')">copy command</button>
       </div>
     </div>
 
-    <div class="token-section">
-      <span class="result-label">⚠ Your token — save this to delete your tunnel later</span>
-      <div class="code-block token-block">
-        <code id="tunnel-token" class="blurred" onclick="this.classList.remove('blurred')">click to reveal</code>
-        <button onclick="copyToken()" class="copy-btn-sm">copy</button>
+    <div style="margin-bottom:1.2rem">
+      <span class="result-label">Install cloudflared + vortex</span>
+      <div class="result-value">
+        <code>curl -fsSL https://hackersfun369.github.io/vortex/install.sh | sh</code>
+        <button class="copy-btn-sm" onclick="navigator.clipboard.writeText('curl -fsSL https://hackersfun369.github.io/vortex/install.sh | sh')">copy</button>
       </div>
-      <span class="hint">this token is shown once and never stored. keep it safe.</span>
     </div>
 
-    <button onclick="resetForm()" class="btn-ghost full-width mt">Create another tunnel</button>
+    <div class="token-warning">⚠ Save your token — shown once, needed to delete this tunnel</div>
+
+    <div style="margin-bottom:1.2rem">
+      <span class="result-label">Your token</span>
+      <div class="result-value">
+        <code id="res-token" style="filter:blur(5px);cursor:pointer;transition:filter .2s;word-break:break-all"
+          onclick="this.style.filter='none'">click to reveal</code>
+        <button class="copy-btn-sm" onclick="copyToken()">copy</button>
+      </div>
+      <span class="hint">hint: <span id="res-hint" style="font-family:var(--mono);color:var(--accent2)"></span></span>
+    </div>
+
+    <div style="display:flex;gap:0.8rem;margin-top:1.5rem">
+      <button onclick="resetForm()" class="btn-ghost" style="flex:1">Create another</button>
+      <a href="/vortex/dashboard.html" class="btn-primary" style="flex:1;text-align:center">Dashboard</a>
+    </div>
   </div>
-</main>
+</div>
 
+<script src="/vortex/js/app.js"></script>
 <script>
-const API = 'https://hackersfun369.github.io'
+let rawToken = ''
+
+window.addEventListener('load', () => {
+  const key = getApiKey()
+  if (key) document.getElementById('apikey').value = key
+  initNav()
+})
+
+function goSignIn() { window.location.href = getSignInUrl() }
+function toggleOpts(btn) {
+  const f = document.getElementById('opts-fields')
+  f.classList.toggle('open')
+  document.getElementById('opts-arrow').textContent = f.classList.contains('open') ? '▼' : '▶'
+}
+function toggleReserve(cb) {
+  document.getElementById('apikey-group').style.display = cb.checked ? 'block' : 'none'
+}
 
 async function createTunnel() {
-  const port      = parseInt(document.getElementById('port').value)
-  const subdomain = document.getElementById('subdomain').value.trim().toLowerCase()
-  const privacy   = document.getElementById('privacy').checked
-  const errBox    = document.getElementById('error-box')
-  const btn       = document.getElementById('create-btn')
+  const port     = parseInt(document.getElementById('port').value)
+  const sub      = document.getElementById('subdomain').value.trim().toLowerCase()
+  const privacy  = document.getElementById('privacy').checked
+  const reserve  = document.getElementById('reserve').checked
+  const apikey   = document.getElementById('apikey').value.trim() || getApiKey()
+  const metaKey  = document.getElementById('meta-key').value.trim()
+  const metaVal  = document.getElementById('meta-val').value.trim()
+  const errBox   = document.getElementById('error-box')
+  const btn      = document.getElementById('create-btn')
 
   errBox.classList.add('hidden')
-
-  if (!port || port < 1 || port > 65535) {
-    showError('Please enter a valid port number (1–65535)')
-    return
-  }
+  if (!port || port < 1 || port > 65535) { showErr('Please enter a valid port (1–65535)'); return }
+  if (reserve && !apikey) { showErr('API key required for reservation'); return }
 
   btn.textContent = 'Creating...'
-  btn.disabled = true
+  btn.disabled    = true
+
+  const body    = { port, privacy, reserve }
+  if (sub)              body.subdomain = sub
+  if (metaKey && metaVal) body.meta    = { [metaKey]: metaVal }
+
+  const headers = { 'Content-Type': 'application/json' }
+  if (apikey)  headers['Authorization']    = `Bearer ${apikey}`
+  if (privacy) headers['X-Vortex-Privacy'] = '1'
 
   try {
-    const res = await fetch(`${API}/tunnel/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(privacy ? { 'X-Vortex-Privacy': '1' } : {}),
-      },
-      body: JSON.stringify({
-        subdomain: subdomain || undefined,
-        port,
-        privacy,
-      }),
-    })
-
+    const res  = await fetch(`${API}/tunnel/create`, { method:'POST', headers, body:JSON.stringify(body) })
     const data = await res.json()
-
-    if (!res.ok) {
-      showError(data.error || `Error ${res.status}`)
-      btn.textContent = 'Create tunnel'
-      btn.disabled = false
-      return
-    }
-
-    // Show result
-    document.getElementById('create-form').classList.add('hidden')
-    const card = document.getElementById('result-card')
-    card.classList.remove('hidden')
-
-    const urlEl = document.getElementById('tunnel-url')
-    urlEl.href        = data.url
-    urlEl.textContent = data.url
-    document.getElementById('tunnel-url-text').textContent = data.url
-    document.getElementById('cf-cmd').textContent = data.cloudflared_cmd
-    document.getElementById('tunnel-token').textContent = data.token
-    document.getElementById('tunnel-token').setAttribute('data-token', data.token)
-
-  } catch (err) {
-    showError('Network error — please try again')
-    btn.textContent = 'Create tunnel'
-    btn.disabled = false
-  }
+    if (!res.ok) { showErr(data.error || `Error ${res.status}`); btn.textContent='Create tunnel'; btn.disabled=false; return }
+    showResult(data)
+  } catch { showErr('Network error — please try again'); btn.textContent='Create tunnel'; btn.disabled=false }
 }
 
-function showError(msg) {
-  const box = document.getElementById('error-box')
-  box.textContent = msg
-  box.classList.remove('hidden')
+function showResult(d) {
+  document.getElementById('create-form').style.display = 'none'
+  document.getElementById('result-card').style.display = 'block'
+  const urlEl = document.getElementById('res-url')
+  urlEl.href = urlEl.textContent = d.url
+  document.getElementById('res-cmd').textContent  = d.cloudflared_cmd
+  document.getElementById('res-hint').textContent = d.token_hint || ''
+  rawToken = d.token
+  if (d.private)  document.getElementById('res-private').style.display  = 'inline'
+  if (d.reserved) document.getElementById('res-reserved').style.display = 'inline'
 }
 
-function copyText(id) {
-  const el = document.getElementById(id)
-  navigator.clipboard.writeText(el.textContent || el.getAttribute('data-token') || '')
-  const btn = event.target
-  btn.textContent = 'copied!'
-  setTimeout(() => btn.textContent = 'copy', 2000)
+function showErr(msg) {
+  const b = document.getElementById('error-box')
+  b.textContent = msg; b.classList.remove('hidden')
+}
+
+function cp(id, prop) {
+  navigator.clipboard.writeText(document.getElementById(id)[prop])
+  event.target.textContent = 'copied!'
+  setTimeout(() => event.target.textContent = 'copy', 2000)
 }
 
 function copyToken() {
-  const el = document.getElementById('tunnel-token')
-  navigator.clipboard.writeText(el.getAttribute('data-token') || el.textContent)
+  navigator.clipboard.writeText(rawToken)
   event.target.textContent = 'copied!'
   setTimeout(() => event.target.textContent = 'copy', 2000)
 }
 
 function resetForm() {
-  document.getElementById('result-card').classList.add('hidden')
-  document.getElementById('create-form').classList.remove('hidden')
-  document.getElementById('create-btn').textContent = 'Create tunnel'
-  document.getElementById('create-btn').disabled = false
+  document.getElementById('result-card').style.display = 'none'
+  document.getElementById('create-form').style.display = 'block'
+  document.getElementById('create-btn').textContent    = 'Create tunnel'
+  document.getElementById('create-btn').disabled       = false
   document.getElementById('port').value = ''
   document.getElementById('subdomain').value = ''
   document.getElementById('privacy').checked = false
+  document.getElementById('reserve').checked = false
+  document.getElementById('error-box').classList.add('hidden')
+  rawToken = ''
 }
 </script>
 </body>

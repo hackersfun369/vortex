@@ -10,12 +10,16 @@
 </head>
 <body>
 <nav class="nav">
-  <span class="nav-logo">⬡ vortex</span>
+  <a href="/vortex/" class="nav-logo">⬡ vortex</a>
   <div class="nav-links">
-    <a href="/vortex/portal">portal</a>
-    <a href="/vortex/docs">docs</a>
-    <a href="/vortex/live">live</a>
-    <a href="https://vortex-api.guessmesir-007.workers.dev/auth/github" class="btn-nav">sign in</a>
+    <a href="/vortex/portal.html">portal</a>
+    <a href="/vortex/docs.html">docs</a>
+    <a href="/vortex/live.html">live</a>
+    <img id="nav-avatar" src="" alt="" class="hidden" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border2)">
+    <span id="nav-user" class="nav-user hidden"></span>
+    <a href="/vortex/dashboard.html" id="nav-dashboard" class="btn-nav hidden">dashboard</a>
+    <a id="nav-signin" href="#" onclick="goSignIn()" class="btn-nav">sign in</a>
+    <button id="nav-signout" onclick="signOut()" class="btn-nav-ghost hidden">sign out</button>
   </div>
 </nav>
 
@@ -25,12 +29,12 @@
   <p class="hero-sub">Secure tunnels to localhost in seconds. Your own subdomain, forever free. No credit card. No server. No limits.</p>
   <div class="install-box">
     <span class="install-label">install</span>
-    <code id="install-cmd">curl -fsSL https://hackersfun369.github.io/install.sh | sh</code>
+    <code id="install-cmd">curl -fsSL https://hackersfun369.github.io/vortex/install.sh | sh</code>
     <button onclick="copyInstall()" class="copy-btn">copy</button>
   </div>
   <div class="hero-actions">
-    <a href="/portal" class="btn-primary">try without installing →</a>
-    <a href="/docs" class="btn-ghost">read the docs</a>
+    <a href="/vortex/portal.html" class="btn-primary">try without installing →</a>
+    <a href="/vortex/docs.html" class="btn-ghost">read the docs</a>
   </div>
 </section>
 
@@ -42,25 +46,19 @@
     </div>
     <div class="terminal-body">
       <div class="line"><span class="prompt">$</span> vortex 3000 -s myapp</div>
-      <div class="line out">
-        <pre>
- ██╗   ██╗ ██████╗ ██████╗ ████████╗███████╗██╗  ██╗
+      <div class="line out" style="color:var(--accent2);font-size:0.7rem">
+<pre> ██╗   ██╗ ██████╗ ██████╗ ████████╗███████╗██╗  ██╗
  ╚██╗ ██╔╝██║   ██║██████╔╝   ██║   █████╗   ╚███╔╝
-  ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗
-   ╚═══╝   ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝</pre>
+  ╚████╔╝ ╚██████╔╝██║  ██║   ██║   ███████╗██╔╝ ██╗</pre>
       </div>
-      <div class="line out dim">  ──────────────────────────────────────────────────────────</div>
-      <div class="line out">  Status              <span class="green">● online</span></div>
-      <div class="line out">  URL                 <span class="accent">https://myapp.hackersfun369.github.io</span></div>
-      <div class="line out">  Forwarding          http://localhost:3000</div>
-      <div class="line out">  Privacy             tracked</div>
-      <div class="line out dim">  ──────────────────────────────────────────────────────────</div>
-      <div class="line out dim">  Time         Method   Path                             Status   Duration</div>
-      <div class="line out dim">  ──────────────────────────────────────────────────────────</div>
-      <div class="line out">  14:02:11     GET      /                                <span class="green">200</span>      12ms</div>
-      <div class="line out">  14:02:14     POST     /api/login                       <span class="green">201</span>      45ms</div>
-      <div class="line out">  14:02:18     GET      /api/profile                     <span class="green">200</span>      8ms</div>
-      <div class="line cursor-line out">  14:02:22     DELETE   /api/session                     <span class="green">200</span>      6ms<span class="cursor">█</span></div>
+      <div class="line out dim">  ──────────────────────────────────────────────────────</div>
+      <div class="line out">  Status    <span class="green">● online</span></div>
+      <div class="line out">  URL       <span class="accent">https://myapp.vortex-api.guessmesir-007.workers.dev</span></div>
+      <div class="line out">  Forwarding  http://localhost:3000</div>
+      <div class="line out dim">  ──────────────────────────────────────────────────────</div>
+      <div class="line out">  14:02:11  GET   /             <span class="green">200</span>  12ms</div>
+      <div class="line out">  14:02:14  POST  /api/login    <span class="green">201</span>  45ms</div>
+      <div class="line out cursor-line">  14:02:18  GET   /api/profile  <span class="green">200</span>  8ms<span class="cursor">█</span></div>
     </div>
   </div>
 </section>
@@ -74,17 +72,17 @@
   <div class="feature">
     <div class="feature-icon">🔒</div>
     <h3>Private mode</h3>
-    <p>Pass <code>--privacy</code> and nothing is logged, registered, or tracked. Zero trace.</p>
+    <p>Pass <code>--privacy</code> and nothing is logged, registered, or tracked.</p>
   </div>
   <div class="feature">
     <div class="feature-icon">♾️</div>
     <h3>Permanent subdomains</h3>
-    <p>Sign in with GitHub, reserve your subdomain. It's yours as long as you use it.</p>
+    <p>Sign in with GitHub, reserve your subdomain. It stays yours as long as you use it.</p>
   </div>
   <div class="feature">
     <div class="feature-icon">📱</div>
-    <h3>API access</h3>
-    <p>Create tunnels programmatically from mobile apps, scripts, or CI pipelines.</p>
+    <h3>REST API</h3>
+    <p>Create tunnels from mobile apps, scripts, or CI pipelines via the API.</p>
   </div>
   <div class="feature">
     <div class="feature-icon">🌐</div>
@@ -101,51 +99,38 @@
 <section class="usage-examples">
   <h2>Works for everything</h2>
   <div class="examples-grid">
-    <div class="example">
-      <div class="example-label">REST API</div>
-      <code>vortex 8080 -s my-api</code>
-    </div>
-    <div class="example">
-      <div class="example-label">React / Vite dev server</div>
-      <code>vortex 5173 -s my-frontend</code>
-    </div>
-    <div class="example">
-      <div class="example-label">Webhook receiver</div>
-      <code>vortex 3000 -s webhook-test</code>
-    </div>
-    <div class="example">
-      <div class="example-label">Private, no tracking</div>
-      <code>vortex 4000 --privacy</code>
-    </div>
-    <div class="example">
-      <div class="example-label">From mobile (API)</div>
-      <code>POST /tunnel/create</code>
-    </div>
-    <div class="example">
-      <div class="example-label">No install (portal)</div>
-      <a href="/portal">use the portal →</a>
-    </div>
+    <div class="example"><div class="example-label">REST API</div><code>vortex 8080 -s my-api</code></div>
+    <div class="example"><div class="example-label">React / Vite</div><code>vortex 5173 -s my-frontend</code></div>
+    <div class="example"><div class="example-label">Webhook receiver</div><code>vortex 3000 -s webhook-test</code></div>
+    <div class="example"><div class="example-label">Private mode</div><code>vortex 4000 --privacy</code></div>
+    <div class="example"><div class="example-label">From mobile (API)</div><code>POST /tunnel/create</code></div>
+    <div class="example"><div class="example-label">No install</div><a href="/vortex/portal.html">use the portal →</a></div>
   </div>
 </section>
 
 <footer class="footer">
   <div class="footer-logo">⬡ vortex</div>
   <div class="footer-links">
-    <a href="/portal">portal</a>
-    <a href="/docs">docs</a>
-    <a href="/live">live tunnels</a>
+    <a href="/vortex/portal.html">portal</a>
+    <a href="/vortex/docs.html">docs</a>
+    <a href="/vortex/live.html">live tunnels</a>
     <a href="https://github.com/hackersfun369/vortex">github</a>
   </div>
   <div class="footer-note">free forever · built on cloudflare + github</div>
 </footer>
 
+<script src="/vortex/js/app.js"></script>
 <script>
+function goSignIn() {
+  window.location.href = getSignInUrl()
+}
 function copyInstall() {
   navigator.clipboard.writeText(document.getElementById('install-cmd').textContent)
   const btn = document.querySelector('.copy-btn')
   btn.textContent = 'copied!'
   setTimeout(() => btn.textContent = 'copy', 2000)
 }
+initNav()
 </script>
 </body>
 </html>

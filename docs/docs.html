@@ -3,260 +3,486 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vortex Docs</title>
+<title>Vortex Docs — API Reference</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="/vortex/css/style.css">
 <style>
-.docs-layout { display: grid; grid-template-columns: 220px 1fr; gap: 3rem; max-width: 1100px; margin: 3rem auto; padding: 0 1.5rem; }
-.docs-sidebar { position: sticky; top: 80px; height: fit-content; }
-.docs-sidebar nav a { display: block; color: var(--muted); text-decoration: none; font-size: 0.88rem; padding: 0.3rem 0; transition: color .2s; }
-.docs-sidebar nav a:hover { color: var(--text); }
-.docs-sidebar nav a.section { font-weight: 600; color: var(--text); margin-top: 1.2rem; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; pointer-events: none; }
-.docs-content h1 { font-size: 2rem; margin-bottom: 0.5rem; }
-.docs-content h2 { font-size: 1.3rem; margin: 2.5rem 0 0.7rem; padding-top: 2rem; border-top: 1px solid var(--border); }
-.docs-content h3 { font-size: 1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; color: var(--accent2); }
-.docs-content p  { color: var(--muted); margin-bottom: 1rem; }
-.docs-content ul { color: var(--muted); padding-left: 1.4rem; margin-bottom: 1rem; }
-.docs-content li { margin-bottom: 0.3rem; }
-.docs-content pre {
-  background: var(--surface); border: 1px solid var(--border2);
-  border-radius: 10px; padding: 1.2rem; overflow-x: auto;
-  font-family: var(--mono); font-size: 0.82rem; margin-bottom: 1.2rem; line-height: 1.6;
-}
-.docs-content code {
-  font-family: var(--mono); font-size: 0.85em;
-  background: var(--surface2); padding: 0.15em 0.4em; border-radius: 4px; color: var(--accent2);
-}
-.docs-content pre code { background: none; padding: 0; font-size: inherit; color: var(--text); }
-.method { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 5px; font-family: var(--mono); font-size: 0.8rem; font-weight: 700; margin-right: 0.5rem; }
-.get    { background: rgba(52,212,124,0.15);  color: var(--green); }
-.post   { background: rgba(124,109,250,0.15); color: var(--accent2); }
-.delete { background: rgba(248,113,113,0.15); color: var(--red); }
-.endpoint { margin-bottom: 2rem; }
-.endpoint-path { font-family: var(--mono); font-size: 0.95rem; }
-.auth-badge { display: inline-block; font-size: 0.75rem; border: 1px solid var(--border2); padding: 0.15rem 0.5rem; border-radius: 4px; margin-left: 0.5rem; color: var(--muted); }
-table { width: 100%; border-collapse: collapse; margin-bottom: 1.5rem; font-size: 0.9rem; }
-th { text-align: left; color: var(--muted); font-size: 0.78rem; font-weight: 500; padding: 0.5rem 0.7rem; border-bottom: 1px solid var(--border); }
-td { padding: 0.6rem 0.7rem; border-bottom: 1px solid var(--border); color: var(--muted); }
-td:first-child { color: var(--text); font-family: var(--mono); font-size: 0.85rem; }
-@media (max-width: 768px) { .docs-layout { grid-template-columns: 1fr; } .docs-sidebar { display: none; } }
+.docs-wrap { display:grid; grid-template-columns:220px 1fr; gap:3rem; max-width:1100px; margin:2rem auto; padding:0 1.5rem; }
+.docs-sidebar { position:sticky; top:80px; height:fit-content; }
+.docs-sidebar a { display:block; color:var(--muted); text-decoration:none; font-size:0.85rem; padding:0.25rem 0; transition:color .2s; }
+.docs-sidebar a:hover { color:var(--text); }
+.docs-sidebar .sec { font-weight:600; color:var(--text); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.5px; margin-top:1.2rem; pointer-events:none; }
+.docs-content h1 { font-size:1.8rem; margin-bottom:0.5rem; }
+.docs-content h2 { font-size:1.2rem; margin:2.5rem 0 0.7rem; padding-top:2rem; border-top:1px solid var(--border); }
+.docs-content h3 { font-size:1rem; font-weight:600; margin:1.5rem 0 0.5rem; color:var(--accent2); }
+.docs-content p { color:var(--muted); margin-bottom:0.8rem; line-height:1.7; }
+.docs-content ul { color:var(--muted); padding-left:1.4rem; margin-bottom:1rem; }
+.docs-content li { margin-bottom:0.3rem; }
+.docs-content pre { background:var(--surface); border:1px solid var(--border2); border-radius:10px; padding:1.2rem; overflow-x:auto; font-family:var(--mono); font-size:0.82rem; margin-bottom:1.2rem; line-height:1.6; }
+.docs-content code { font-family:var(--mono); font-size:0.85em; background:var(--surface2); padding:0.15em 0.4em; border-radius:4px; color:var(--accent2); }
+.docs-content pre code { background:none; padding:0; font-size:inherit; color:var(--text); }
+.method { display:inline-block; padding:0.2rem 0.5rem; border-radius:5px; font-family:var(--mono); font-size:0.78rem; font-weight:700; margin-right:0.5rem; }
+.get    { background:rgba(52,212,124,0.15); color:var(--green); }
+.post   { background:rgba(124,109,250,0.15); color:var(--accent2); }
+.delete { background:rgba(248,113,113,0.15); color:var(--red); }
+.auth-badge { font-size:0.72rem; border:1px solid var(--border2); padding:0.15rem 0.5rem; border-radius:4px; color:var(--muted); margin-left:0.5rem; }
+.try-btn { background:var(--accent); color:#fff; border:none; padding:0.4rem 0.9rem; border-radius:6px; font-size:0.82rem; cursor:pointer; font-family:var(--sans); transition:opacity .2s; }
+.try-btn:hover { opacity:0.85; }
+.try-form { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:1rem; margin-top:0.8rem; display:none; }
+.try-form.open { display:block; }
+.try-input { width:100%; background:var(--surface); border:1px solid var(--border2); border-radius:6px; padding:0.5rem 0.8rem; color:var(--text); font-family:var(--mono); font-size:0.82rem; outline:none; margin-bottom:0.5rem; }
+.try-input:focus { border-color:var(--accent); }
+.try-result { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:0.8rem; font-family:var(--mono); font-size:0.78rem; line-height:1.6; white-space:pre-wrap; word-break:break-all; max-height:300px; overflow-y:auto; margin-top:0.5rem; display:none; }
+.endpoint { margin-bottom:2rem; }
+.endpoint-path { font-family:var(--mono); font-size:0.95rem; }
+table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; font-size:0.88rem; }
+th { text-align:left; color:var(--muted); font-size:0.75rem; font-weight:500; padding:0.5rem 0.7rem; border-bottom:1px solid var(--border); }
+td { padding:0.55rem 0.7rem; border-bottom:1px solid var(--border); color:var(--muted); }
+td:first-child { color:var(--text); font-family:var(--mono); font-size:0.82rem; }
+@media(max-width:768px){.docs-wrap{grid-template-columns:1fr}.docs-sidebar{display:none}}
 </style>
 </head>
 <body>
 <nav class="nav">
-  <a href="/" class="nav-logo">⬡ vortex</a>
+  <a href="/vortex/" class="nav-logo">⬡ vortex</a>
   <div class="nav-links">
-    <a href="/vortex/portal">portal</a>
-    <a href="/vortex/docs" class="active">docs</a>
-    <a href="/vortex/live">live</a>
-    <a href="https://vortex-api.guessmesir-007.workers.dev/auth/github" class="btn-nav">sign in</a>
+    <a href="/vortex/portal.html">portal</a>
+    <a href="/vortex/docs.html" class="active">docs</a>
+    <a href="/vortex/live.html">live</a>
+    <img id="nav-avatar" src="" alt="" class="hidden" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border2)">
+    <span id="nav-user" class="nav-user hidden"></span>
+    <a href="/vortex/dashboard.html" id="nav-dashboard" class="btn-nav hidden">dashboard</a>
+    <a id="nav-signin" href="#" onclick="goSignIn()" class="btn-nav">sign in</a>
+    <button id="nav-signout" onclick="signOut()" class="btn-nav-ghost hidden">sign out</button>
   </div>
 </nav>
 
-<div class="docs-layout">
+<div class="docs-wrap">
   <aside class="docs-sidebar">
-    <nav>
-      <a href="#overview"  class="section">Overview</a>
-      <a href="#install">Installation</a>
-      <a href="#quickstart">Quick start</a>
-      <a href="#cli"       class="section">CLI</a>
-      <a href="#cli-flags">Flags</a>
-      <a href="#cli-env">Environment</a>
-      <a href="#api"       class="section">REST API</a>
-      <a href="#api-create">Create tunnel</a>
-      <a href="#api-get">Get tunnel</a>
-      <a href="#api-delete">Delete tunnel</a>
-      <a href="#api-list">List tunnels</a>
-      <a href="#api-heartbeat">Heartbeat</a>
-      <a href="#api-my">My tunnels</a>
-      <a href="#api-apply">Apply for API</a>
-      <a href="#lifecycle" class="section">Lifecycle</a>
-      <a href="#privacy"   class="section">Privacy</a>
-      <a href="#auth"      class="section">Auth</a>
-      <a href="#errors"    class="section">Errors</a>
-    </nav>
+    <a href="#overview" class="sec">Overview</a>
+    <a href="#install">Installation</a>
+    <a href="#auth-section">Authentication</a>
+    <a href="#public" class="sec">Public</a>
+    <a href="#health">GET /health</a>
+    <a href="#create">POST /tunnel/create</a>
+    <a href="#get-tunnel">GET /tunnel/:sub</a>
+    <a href="#list">GET /tunnels</a>
+    <a href="#delete">DELETE /tunnel/:sub</a>
+    <a href="#authenticated" class="sec">Authenticated</a>
+    <a href="#heartbeat">POST /heartbeat/:sub</a>
+    <a href="#recover-token">GET /tunnel/recover/:sub</a>
+    <a href="#my-tunnels">GET /my/tunnels</a>
+    <a href="#recover-key">GET /my/recover-apikey</a>
+    <a href="#apply">POST /my/apply-api-access</a>
+    <a href="#admin-section" class="sec">Admin</a>
+    <a href="#admin-users">GET /admin/users</a>
+    <a href="#admin-apps">GET /admin/applications</a>
+    <a href="#admin-approve">POST /admin/approve/:u</a>
+    <a href="#admin-revoke">DELETE /admin/revoke/:u</a>
+    <a href="#admin-suspend">POST /admin/suspend/:u</a>
+    <a href="#admin-recover">GET /admin/recover-key/:u</a>
+    <a href="#admin-debug">GET /admin/debug</a>
+    <a href="#errors" class="sec">Errors</a>
+    <a href="#status-values">Status values</a>
+    <a href="#schemas">Schemas</a>
   </aside>
 
   <div class="docs-content">
-    <h1>Documentation</h1>
-    <p>Everything you need to use Vortex — from quick start to full API reference.</p>
+    <h1>API Reference</h1>
+    <p>Base URL: <code>https://vortex-api.guessmesir-007.workers.dev</code></p>
 
     <h2 id="overview">Overview</h2>
-    <p>Vortex exposes your local server to the internet via a named subdomain. Traffic flows through Cloudflare's network — Vortex never touches your payload.</p>
-    <pre>localhost:3000  ←── Cloudflare Tunnel ───  myapp.hackersfun369.github.io
-                                                        ↑
-                                               visitor's HTTPS request</pre>
+    <p>Vortex is a free tunnel service. Expose any local port to the internet via a named subdomain. All responses are JSON. Authentication uses API keys prefixed with <code>vrtx_</code>.</p>
 
     <h2 id="install">Installation</h2>
-    <pre>curl -fsSL https://hackersfun369.github.io/install.sh | sh</pre>
-    <p>Installs <code>cloudflared</code> and the <code>vortex</code> binary. Supports Linux (amd64/arm64/arm), macOS (amd64/arm64), and Windows (amd64).</p>
-    <p><strong>No install?</strong> Use the <a href="/portal">portal</a> to get a one-command copy-paste.</p>
+    <pre>curl -fsSL https://hackersfun369.github.io/vortex/install.sh | sh</pre>
+    <p>Installs <code>cloudflared</code> and the <code>vortex</code> CLI. Supports Linux, macOS, Windows.</p>
 
-    <h2 id="quickstart">Quick start</h2>
-    <pre>vortex 3000                        # random subdomain
-vortex 3000 -s myapp               # custom subdomain → myapp.hackersfun369.github.io
-vortex 3000 --privacy              # private, not listed
-vortex 3000 -s myapp --reserve     # permanent reservation (API key required)</pre>
+    <h2 id="auth-section">Authentication</h2>
+    <p>Authenticated endpoints require an API key obtained at signup or via <code>/my/recover-apikey</code>.</p>
+    <pre>Authorization: Bearer vrtx_yourkey</pre>
+    <p>Owner-only endpoints require the <code>OWNER_TOKEN</code> secret set during Worker setup.</p>
+    <pre>Authorization: Bearer YOUR_OWNER_TOKEN</pre>
 
-    <h2 id="cli">CLI reference</h2>
-    <h3 id="cli-flags">Flags</h3>
-    <table>
-      <tr><th>Flag</th><th>Short</th><th>Description</th></tr>
-      <tr><td>--subdomain &lt;n&gt;</td><td>-s</td><td>Preferred subdomain. Auto-generates swift-river-4821 style if omitted.</td></tr>
-      <tr><td>--privacy</td><td>-p</td><td>Private mode — no logs, no public listing, secret Gist.</td></tr>
-      <tr><td>--reserve</td><td>-r</td><td>Reserve subdomain permanently. Requires API key.</td></tr>
-      <tr><td>--token &lt;t&gt;</td><td>-t</td><td>Your subdomain token — used to reclaim a reserved subdomain.</td></tr>
-      <tr><td>--api-key &lt;k&gt;</td><td>-k</td><td>Your Vortex API key (starts with vrtx_).</td></tr>
-      <tr><td>--version</td><td>-v</td><td>Print version and exit.</td></tr>
-      <tr><td>--help</td><td>-h</td><td>Show help.</td></tr>
-    </table>
+    <!-- ── PUBLIC ── -->
+    <h2 id="public">Public Endpoints</h2>
 
-    <h3 id="cli-env">Environment variables</h3>
-    <table>
-      <tr><th>Variable</th><th>Description</th></tr>
-      <tr><td>VORTEX_PRIVACY=1</td><td>Same as --privacy</td></tr>
-      <tr><td>VORTEX_TOKEN=&lt;t&gt;</td><td>Same as --token</td></tr>
-      <tr><td>VORTEX_API_KEY=&lt;k&gt;</td><td>Same as --api-key</td></tr>
-    </table>
-
-    <h2 id="api">REST API</h2>
-    <p>Base URL: <code>https://hackersfun369.github.io</code></p>
-    <p>All responses are JSON. All request bodies are JSON with <code>Content-Type: application/json</code>.</p>
-
-    <div class="endpoint" id="api-create">
-      <h3><span class="method post">POST</span><span class="endpoint-path">/tunnel/create</span> <span class="auth-badge">optional auth</span></h3>
-      <p>Register a new tunnel. Guests can create non-reserved tunnels. API key required for reservation.</p>
-      <pre>{
-  "subdomain": "myapp",    // optional — auto-generates if omitted
-  "port": 3000,            // optional — informational
-  "privacy": false,        // optional — default false
-  "reserve": true          // optional — requires Authorization header
-}</pre>
-      <p>Headers: <code>Authorization: Bearer vrtx_yourkey</code> (for reserve), <code>X-Vortex-Privacy: 1</code> (alt to body privacy)</p>
-      <pre>{
-  "ok": true,
-  "subdomain": "myapp",
-  "url": "https://myapp.hackersfun369.github.io",
-  "token": "save-this-shown-once",
-  "reserved": true,
-  "private": false,
-  "created_at": "2025-01-01T00:00:00Z",
-  "expires_after_inactivity": "30 days",
-  "grace_period_if_reserved": "30 days",
-  "cloudflared_cmd": "cloudflared tunnel --url http://localhost:3000 --hostname myapp.hackersfun369.github.io",
-  "install_cmd": "curl -fsSL https://hackersfun369.github.io/install.sh | sh"
-}</pre>
+    <div class="endpoint" id="health">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/health</span></h3>
+      <p>API health check and version.</p>
+      <button class="try-btn" onclick="tryIt('health-form',this)">Try it</button>
+      <div class="try-form" id="health-form">
+        <button class="try-btn" onclick="run('GET','/health',null,'health-res')">Send</button>
+        <pre class="try-result" id="health-res"></pre>
+      </div>
+      <pre>{ "status": "ok", "version": "2.0.0", "ts": 1234567890 }</pre>
     </div>
 
-    <div class="endpoint" id="api-get">
+    <div class="endpoint" id="create">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/tunnel/create</span></h3>
+      <p>Create a new tunnel. Auth optional — required only if <code>reserve: true</code>.</p>
+      <button class="try-btn" onclick="tryIt('create-form',this)">Try it</button>
+      <div class="try-form" id="create-form">
+        <input class="try-input" id="create-sub" placeholder='subdomain (optional)'>
+        <input class="try-input" id="create-port" placeholder='port (e.g. 3000)' type="number">
+        <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.85rem;color:var(--muted)">
+          <input type="checkbox" id="create-privacy"> private mode
+        </label>
+        <button class="try-btn" onclick="runCreate()">Send</button>
+        <pre class="try-result" id="create-res"></pre>
+      </div>
+      <pre>{
+  "subdomain": "myapp",   // optional — auto-generates if omitted
+  "port": 3000,           // optional — informational
+  "privacy": false,       // optional
+  "reserve": true,        // optional — requires Authorization header
+  "meta": {}              // optional
+}</pre>
+      <p>Response <code>201</code>: returns <code>token</code>, <code>token_hint</code>, <code>cloudflared_cmd</code>, <code>url</code>.</p>
+    </div>
+
+    <div class="endpoint" id="get-tunnel">
       <h3><span class="method get">GET</span><span class="endpoint-path">/tunnel/:subdomain</span></h3>
-      <p>Get public info about a tunnel. Never returns token. Returns 404 for private tunnels.</p>
-      <pre>{
-  "subdomain": "myapp",
-  "url": "https://myapp.hackersfun369.github.io",
-  "reserved": true,
-  "private": false,
-  "status": "active",
-  "last_seen": "2025-01-15T08:00:00Z",
-  "created_at": "2025-01-01T00:00:00Z",
-  "grace_until": null
-}</pre>
-      <p>Status values: <code>active</code> / <code>inactive</code> / <code>grace</code> / <code>expired</code></p>
+      <p>Get public info about a tunnel. Returns 404 for private tunnels.</p>
+      <button class="try-btn" onclick="tryIt('get-form',this)">Try it</button>
+      <div class="try-form" id="get-form">
+        <input class="try-input" id="get-sub" placeholder="subdomain (e.g. myapp)">
+        <button class="try-btn" onclick="run('GET',`/tunnel/${v('get-sub')}`,null,'get-res')">Send</button>
+        <pre class="try-result" id="get-res"></pre>
+      </div>
     </div>
 
-    <div class="endpoint" id="api-delete">
-      <h3><span class="method delete">DELETE</span><span class="endpoint-path">/tunnel/:subdomain</span> <span class="auth-badge">token required</span></h3>
-      <p>Delete a tunnel and immediately free the subdomain.</p>
-      <p>Header: <code>Authorization: Bearer &lt;your-token&gt;</code></p>
-      <pre>{ "ok": true, "subdomain": "myapp", "message": "tunnel deleted, subdomain freed" }</pre>
-    </div>
-
-    <div class="endpoint" id="api-list">
+    <div class="endpoint" id="list">
       <h3><span class="method get">GET</span><span class="endpoint-path">/tunnels</span></h3>
-      <p>List all active non-private tunnels.</p>
-      <pre>{ "ok": true, "count": 3, "tunnels": [...], "updated_at": "2025-01-15T08:00:00Z" }</pre>
+      <p>List all active public tunnels.</p>
+      <button class="try-btn" onclick="tryIt('list-form',this)">Try it</button>
+      <div class="try-form" id="list-form">
+        <button class="try-btn" onclick="run('GET','/tunnels',null,'list-res')">Send</button>
+        <pre class="try-result" id="list-res"></pre>
+      </div>
     </div>
 
-    <div class="endpoint" id="api-heartbeat">
-      <h3><span class="method post">POST</span><span class="endpoint-path">/tunnel/heartbeat/:subdomain</span> <span class="auth-badge">token required</span></h3>
-      <p>Update last_seen. Max 1 write per hour per subdomain. Called automatically by the CLI.</p>
-      <pre>{ "ok": true, "subdomain": "myapp", "last_seen": "2025-01-15T10:00:00Z" }</pre>
+    <div class="endpoint" id="delete">
+      <h3><span class="method delete">DELETE</span><span class="endpoint-path">/tunnel/:subdomain</span> <span class="auth-badge">tunnel token</span></h3>
+      <p>Delete a tunnel. Requires the token returned at creation.</p>
+      <button class="try-btn" onclick="tryIt('del-form',this)">Try it</button>
+      <div class="try-form" id="del-form">
+        <input class="try-input" id="del-sub" placeholder="subdomain">
+        <input class="try-input" id="del-token" placeholder="tunnel token (from creation)">
+        <button class="try-btn" onclick="runDelete()">Send</button>
+        <pre class="try-result" id="del-res"></pre>
+      </div>
     </div>
 
-    <div class="endpoint" id="api-my">
-      <h3><span class="method get">GET</span><span class="endpoint-path">/my/tunnels</span> <span class="auth-badge">auth required</span></h3>
-      <p>List all tunnels owned by the authenticated user.</p>
-      <p>Header: <code>Authorization: Bearer vrtx_yourkey</code> or session cookie</p>
+    <!-- ── AUTHENTICATED ── -->
+    <h2 id="authenticated">Authenticated Endpoints</h2>
+    <p>Require <code>Authorization: Bearer vrtx_yourkey</code>. Your API key is shown at signup and recoverable via <code>/my/recover-apikey</code>.</p>
+
+    <div class="endpoint" id="heartbeat">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/tunnel/heartbeat/:subdomain</span> <span class="auth-badge">tunnel token</span></h3>
+      <p>Update <code>last_seen</code>. Max 1/hour per subdomain. Called automatically by the CLI.</p>
     </div>
 
-    <div class="endpoint" id="api-apply">
-      <h3><span class="method post">POST</span><span class="endpoint-path">/my/apply-api-access</span> <span class="auth-badge">auth required</span></h3>
-      <p>Apply for direct API access. Owner reviews and approves manually.</p>
-      <pre>{ "reason": "building a mobile app that creates tunnels on demand" }</pre>
+    <div class="endpoint" id="recover-token">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/tunnel/recover/:subdomain</span> <span class="auth-badge">API key</span></h3>
+      <p>Recover the full token for a tunnel you own.</p>
+      <button class="try-btn" onclick="tryIt('rt-form',this)">Try it</button>
+      <div class="try-form" id="rt-form">
+        <input class="try-input" id="rt-sub" placeholder="subdomain">
+        <input class="try-input" id="rt-key" placeholder="vrtx_yourkey" value="">
+        <button class="try-btn" onclick="runAuth('GET',`/tunnel/recover/${v('rt-sub')}`,null,'rt-res',v('rt-key'))">Send</button>
+        <pre class="try-result" id="rt-res"></pre>
+      </div>
     </div>
 
-    <h2 id="lifecycle">Subdomain lifecycle</h2>
-    <pre>AVAILABLE ──register──► ACTIVE
-                            │
-                   30 days no heartbeat
-                            │
-                         EXPIRED
-                            │
-             ┌──────────────┴──────────────┐
-             │                             │
-        reserved?                    not reserved?
-             │                             │
-     30-day grace period          FREED IMMEDIATELY
-             │
-       grace expires
-             │
-     FREED — anyone can claim</pre>
+    <div class="endpoint" id="my-tunnels">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/my/tunnels</span> <span class="auth-badge">API key</span></h3>
+      <p>Get your profile and all owned tunnels with full details.</p>
+      <button class="try-btn" onclick="tryIt('my-form',this)">Try it</button>
+      <div class="try-form" id="my-form">
+        <input class="try-input" id="my-key" placeholder="vrtx_yourkey" value="">
+        <button class="try-btn" onclick="runAuth('GET','/my/tunnels',null,'my-res',v('my-key'))">Send</button>
+        <pre class="try-result" id="my-res"></pre>
+      </div>
+    </div>
 
-    <ul>
-      <li>Heartbeat sent automatically by CLI every 60 minutes while tunnel is running</li>
-      <li>Inactivity timeout: 30 days (owner-configurable)</li>
-      <li>Grace period (reserved): 30 days — only token holder can reclaim during this window</li>
-      <li>On expiry: visitor is redirected to <code>/expired?sub=myapp</code></li>
-    </ul>
+    <div class="endpoint" id="recover-key">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/my/recover-apikey</span> <span class="auth-badge">API key</span></h3>
+      <p>Recover your full API key. Returns the decrypted key.</p>
+      <button class="try-btn" onclick="tryIt('rk-form',this)">Try it</button>
+      <div class="try-form" id="rk-form">
+        <input class="try-input" id="rk-key" placeholder="vrtx_yourkey" value="">
+        <button class="try-btn" onclick="runAuth('GET','/my/recover-apikey',null,'rk-res',v('rk-key'))">Send</button>
+        <pre class="try-result" id="rk-res"></pre>
+      </div>
+    </div>
 
-    <h2 id="privacy">Privacy mode</h2>
-    <p>Pass <code>--privacy</code> (CLI) or <code>"privacy": true</code> (API):</p>
-    <ul>
-      <li>Tunnel Gist is stored as <strong>secret</strong> (not publicly listed on GitHub)</li>
-      <li>Excluded from <code>GET /tunnels</code> listing</li>
-      <li>Not shown on the live board</li>
-      <li>Only the subdomain name and token hash are stored — no metadata</li>
-    </ul>
+    <div class="endpoint" id="apply">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/my/apply-api-access</span> <span class="auth-badge">API key</span></h3>
+      <p>Apply for direct API access (reserved subdomains, programmatic use).</p>
+      <button class="try-btn" onclick="tryIt('apply-form',this)">Try it</button>
+      <div class="try-form" id="apply-form">
+        <input class="try-input" id="apply-key" placeholder="vrtx_yourkey" value="">
+        <input class="try-input" id="apply-reason" placeholder="reason for requesting API access">
+        <button class="try-btn" onclick="runAuth('POST','/my/apply-api-access',{reason:v('apply-reason')},'apply-res',v('apply-key'))">Send</button>
+        <pre class="try-result" id="apply-res"></pre>
+      </div>
+    </div>
 
-    <h2 id="auth">Authentication</h2>
-    <p><strong>GitHub OAuth</strong> — click "Sign in" to authenticate. A personal API key (<code>vrtx_...</code>) is issued once and shown in your dashboard.</p>
-    <p><strong>API key</strong> — send as <code>Authorization: Bearer vrtx_yourkey</code>. Required for reservation and <code>/my/tunnels</code>. API users must be approved by the owner.</p>
-    <p><strong>API access</strong> — apply via the dashboard. Owner approves manually.</p>
+    <!-- ── ADMIN ── -->
+    <h2 id="admin-section">Admin Endpoints</h2>
+    <p>Require <code>Authorization: Bearer YOUR_OWNER_TOKEN</code> — the token set during Worker setup.</p>
 
+    <div class="endpoint" id="admin-users">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/admin/users</span> <span class="auth-badge">owner token</span></h3>
+      <p>List all registered users with full schema.</p>
+      <button class="try-btn" onclick="tryIt('au-form',this)">Try it</button>
+      <div class="try-form" id="au-form">
+        <input class="try-input" id="au-token" placeholder="OWNER_TOKEN">
+        <button class="try-btn" onclick="runAuth('GET','/admin/users',null,'au-res',v('au-token'))">Send</button>
+        <pre class="try-result" id="au-res"></pre>
+      </div>
+    </div>
+
+    <div class="endpoint" id="admin-apps">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/admin/applications</span> <span class="auth-badge">owner token</span></h3>
+      <p>List all pending API access applications.</p>
+      <button class="try-btn" onclick="tryIt('aa-form',this)">Try it</button>
+      <div class="try-form" id="aa-form">
+        <input class="try-input" id="aa-token" placeholder="OWNER_TOKEN">
+        <button class="try-btn" onclick="runAuth('GET','/admin/applications',null,'aa-res',v('aa-token'))">Send</button>
+        <pre class="try-result" id="aa-res"></pre>
+      </div>
+    </div>
+
+    <div class="endpoint" id="admin-approve">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/admin/approve/:github_username</span> <span class="auth-badge">owner token</span></h3>
+      <p>Approve API access for a user.</p>
+      <button class="try-btn" onclick="tryIt('ap-form',this)">Try it</button>
+      <div class="try-form" id="ap-form">
+        <input class="try-input" id="ap-token" placeholder="OWNER_TOKEN">
+        <input class="try-input" id="ap-user"  placeholder="github_username">
+        <button class="try-btn" onclick="runAuth('POST',`/admin/approve/${v('ap-user')}`,null,'ap-res',v('ap-token'))">Send</button>
+        <pre class="try-result" id="ap-res"></pre>
+      </div>
+    </div>
+
+    <div class="endpoint" id="admin-revoke">
+      <h3><span class="method delete">DELETE</span><span class="endpoint-path">/admin/revoke/:github_username</span> <span class="auth-badge">owner token</span></h3>
+      <p>Revoke API access from a user.</p>
+      <button class="try-btn" onclick="tryIt('rv-form',this)">Try it</button>
+      <div class="try-form" id="rv-form">
+        <input class="try-input" id="rv-token" placeholder="OWNER_TOKEN">
+        <input class="try-input" id="rv-user"  placeholder="github_username">
+        <button class="try-btn" onclick="runAuth('DELETE',`/admin/revoke/${v('rv-user')}`,null,'rv-res',v('rv-token'))">Send</button>
+        <pre class="try-result" id="rv-res"></pre>
+      </div>
+    </div>
+
+    <div class="endpoint" id="admin-suspend">
+      <h3><span class="method post">POST</span><span class="endpoint-path">/admin/suspend/:github_username</span> <span class="auth-badge">owner token</span></h3>
+      <p>Suspend a user account.</p>
+      <button class="try-btn" onclick="tryIt('su-form',this)">Try it</button>
+      <div class="try-form" id="su-form">
+        <input class="try-input" id="su-token"  placeholder="OWNER_TOKEN">
+        <input class="try-input" id="su-user"   placeholder="github_username">
+        <input class="try-input" id="su-reason" placeholder="reason">
+        <button class="try-btn" onclick="runAuth('POST',`/admin/suspend/${v('su-user')}`,{reason:v('su-reason')},'su-res',v('su-token'))">Send</button>
+        <pre class="try-result" id="su-res"></pre>
+      </div>
+    </div>
+
+    <div class="endpoint" id="admin-recover">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/admin/recover-key/:github_username</span> <span class="auth-badge">owner token</span></h3>
+      <p>Recover the full API key for any user.</p>
+      <button class="try-btn" onclick="tryIt('ark-form',this)">Try it</button>
+      <div class="try-form" id="ark-form">
+        <input class="try-input" id="ark-token" placeholder="OWNER_TOKEN">
+        <input class="try-input" id="ark-user"  placeholder="github_username">
+        <button class="try-btn" onclick="runAuth('GET',`/admin/recover-key/${v('ark-user')}`,null,'ark-res',v('ark-token'))">Send</button>
+        <pre class="try-result" id="ark-res"></pre>
+      </div>
+    </div>
+
+    <div class="endpoint" id="admin-debug">
+      <h3><span class="method get">GET</span><span class="endpoint-path">/admin/debug</span> <span class="auth-badge">owner token</span></h3>
+      <p>List all Gists owned by the GitHub token — useful for debugging storage.</p>
+      <button class="try-btn" onclick="tryIt('dbg-form',this)">Try it</button>
+      <div class="try-form" id="dbg-form">
+        <input class="try-input" id="dbg-token" placeholder="OWNER_TOKEN">
+        <button class="try-btn" onclick="runAuth('GET','/admin/debug',null,'dbg-res',v('dbg-token'))">Send</button>
+        <pre class="try-result" id="dbg-res"></pre>
+      </div>
+    </div>
+
+    <!-- ── ERRORS ── -->
     <h2 id="errors">Error responses</h2>
     <table>
       <tr><th>Status</th><th>Meaning</th></tr>
-      <tr><td>400</td><td>Invalid request — bad subdomain format, missing field</td></tr>
+      <tr><td>400</td><td>Bad request — invalid input or missing required field</td></tr>
       <tr><td>401</td><td>Authentication required or invalid token</td></tr>
-      <tr><td>403</td><td>API access not approved, or wrong token for subdomain</td></tr>
-      <tr><td>404</td><td>Tunnel not found, expired, or private</td></tr>
-      <tr><td>409</td><td>Subdomain already in use — includes retry hint</td></tr>
-      <tr><td>429</td><td>Rate limit exceeded — includes retry_after seconds</td></tr>
+      <tr><td>403</td><td>Forbidden — wrong token, suspended account, insufficient access</td></tr>
+      <tr><td>404</td><td>Not found — tunnel doesn't exist, expired, or private</td></tr>
+      <tr><td>409</td><td>Conflict — subdomain already taken</td></tr>
+      <tr><td>429</td><td>Rate limited — includes <code>retry_after</code> seconds</td></tr>
       <tr><td>500</td><td>Internal server error</td></tr>
     </table>
+
+    <h2 id="status-values">Tunnel status values</h2>
+    <table>
+      <tr><th>Status</th><th>Meaning</th></tr>
+      <tr><td>active</td><td>Receiving heartbeats, last seen within 7 days</td></tr>
+      <tr><td>inactive</td><td>No heartbeat for 7–30 days, not yet expired</td></tr>
+      <tr><td>grace</td><td>Expired but in 30-day grace period (reserved subdomains only)</td></tr>
+      <tr><td>expired</td><td>Past inactivity limit — subdomain freed</td></tr>
+    </table>
+
+    <h2 id="schemas">Storage schemas</h2>
+    <p>Each record is stored as a separate secret GitHub Gist containing a single <code>data.json</code> file.</p>
+    <h3>Tunnel — <code>vortex:tunnel:{subdomain}</code></h3>
+    <pre>{
+  "subdomain":       "myapp",
+  "token_hash":      "sha256(token)",
+  "token_encrypted": "AES-256-GCM(token)",
+  "token_hint":      "rawT...ars",
+  "github_username": "sathishgajula369",
+  "reserved":        false,
+  "private":         false,
+  "port":            3000,
+  "status":          "active",
+  "created_at":      "ISO8601",
+  "last_seen":       "ISO8601",
+  "expires_at":      null,
+  "grace_until":     null,
+  "heartbeat_count": 0,
+  "request_count":   0,
+  "meta":            {}
+}</pre>
+    <h3>User — <code>vortex:user:{github_username}</code></h3>
+    <pre>{
+  "github_username":   "sathishgajula369",
+  "github_id":         "252607977",
+  "github_avatar":     "https://avatars.githubusercontent.com/...",
+  "email":             "user@gmail.com",
+  "api_key_hash":      "sha256(api_key)",
+  "api_key_encrypted": "AES-256-GCM(api_key)",
+  "api_key_hint":      "vrtx...8efJ",
+  "api_access":        false,
+  "role":              "user",
+  "joined_at":         "ISO8601",
+  "last_login":        "ISO8601",
+  "tunnels":           ["myapp"],
+  "tunnel_limit":      10,
+  "suspended":         false,
+  "suspension_reason": null
+}</pre>
+    <h3>Pending — <code>vortex:pending:{github_username}</code></h3>
+    <pre>{
+  "github_username": "sathishgajula369",
+  "reason":          "building a mobile app",
+  "applied_at":      "ISO8601",
+  "reviewed":        false,
+  "reviewed_at":     null,
+  "reviewed_by":     null,
+  "decision":        null
+}</pre>
+
   </div>
 </div>
 
-<footer class="footer">
-  <div class="footer-logo">⬡ vortex</div>
-  <div class="footer-links">
-    <a href="/portal">portal</a>
-    <a href="/docs">docs</a>
-    <a href="/live">live tunnels</a>
-    <a href="https://github.com/hackersfun369/vortex">github</a>
-  </div>
-  <div class="footer-note">free forever · built on cloudflare + github</div>
-</footer>
+<script src="/vortex/js/app.js"></script>
+<script>
+function goSignIn() { window.location.href = getSignInUrl() }
+
+// Pre-fill API key inputs
+window.addEventListener('load', () => {
+  const key = getApiKey()
+  if (key) {
+    ['rt-key','my-key','rk-key','apply-key'].forEach(id => {
+      const el = document.getElementById(id)
+      if (el) el.value = key
+    })
+  }
+  initNav()
+})
+
+function v(id) { return document.getElementById(id)?.value?.trim() || '' }
+
+function tryIt(formId, btn) {
+  const form = document.getElementById(formId)
+  form.classList.toggle('open')
+  btn.textContent = form.classList.contains('open') ? 'Close' : 'Try it'
+}
+
+async function run(method, path, body, resId) {
+  const resEl = document.getElementById(resId)
+  resEl.style.display = 'block'
+  resEl.textContent   = 'Sending...'
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } }
+    if (body) opts.body = JSON.stringify(body)
+    const res  = await fetch(`${API}${path}`, opts)
+    const data = await res.json()
+    resEl.textContent = JSON.stringify(data, null, 2)
+  } catch (err) {
+    resEl.textContent = `Error: ${err.message}`
+  }
+}
+
+async function runAuth(method, path, body, resId, token) {
+  const resEl = document.getElementById(resId)
+  resEl.style.display = 'block'
+  resEl.textContent   = 'Sending...'
+  try {
+    const opts = {
+      method,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token || getApiKey()}` }
+    }
+    if (body) opts.body = JSON.stringify(body)
+    const res  = await fetch(`${API}${path}`, opts)
+    const data = await res.json()
+    resEl.textContent = JSON.stringify(data, null, 2)
+  } catch (err) {
+    resEl.textContent = `Error: ${err.message}`
+  }
+}
+
+async function runCreate() {
+  const resEl   = document.getElementById('create-res')
+  resEl.style.display = 'block'
+  resEl.textContent   = 'Sending...'
+  const sub     = v('create-sub')
+  const port    = v('create-port')
+  const privacy = document.getElementById('create-privacy').checked
+  const body    = { privacy }
+  if (sub)  body.subdomain = sub
+  if (port) body.port      = parseInt(port)
+  const headers = { 'Content-Type': 'application/json' }
+  const key = getApiKey()
+  if (key) headers['Authorization'] = `Bearer ${key}`
+  try {
+    const res  = await fetch(`${API}/tunnel/create`, { method:'POST', headers, body:JSON.stringify(body) })
+    const data = await res.json()
+    resEl.textContent = JSON.stringify(data, null, 2)
+  } catch (err) { resEl.textContent = `Error: ${err.message}` }
+}
+
+async function runDelete() {
+  const resEl = document.getElementById('del-res')
+  resEl.style.display = 'block'
+  resEl.textContent   = 'Sending...'
+  const sub   = v('del-sub')
+  const token = v('del-token')
+  try {
+    const res  = await fetch(`${API}/tunnel/${sub}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    const data = await res.json()
+    resEl.textContent = JSON.stringify(data, null, 2)
+  } catch (err) { resEl.textContent = `Error: ${err.message}` }
+}
+</script>
 </body>
 </html>

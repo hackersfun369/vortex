@@ -6,66 +6,84 @@
 <title>Vortex — Tunnel Expired</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="/vortex/css/style.css">
 </head>
 <body>
 <nav class="nav">
-  <a href="/" class="nav-logo">⬡ vortex</a>
+  <a href="/vortex/" class="nav-logo">⬡ vortex</a>
   <div class="nav-links">
-    <a href="/vortex/portal">portal</a>
-    <a href="/vortex/docs">docs</a>
-    <a href="https://vortex-api.guessmesir-007.workers.dev/auth/github" class="btn-nav">sign in</a>
+    <a href="/vortex/portal.html">portal</a>
+    <a href="/vortex/docs.html">docs</a>
+    <a href="/vortex/live.html">live</a>
+    <img id="nav-avatar" src="" alt="" class="hidden" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border2)">
+    <span id="nav-user" class="nav-user hidden"></span>
+    <a href="/vortex/dashboard.html" id="nav-dashboard" class="btn-nav hidden">dashboard</a>
+    <a id="nav-signin" href="#" onclick="goSignIn()" class="btn-nav">sign in</a>
+    <button id="nav-signout" onclick="signOut()" class="btn-nav-ghost hidden">sign out</button>
   </div>
 </nav>
 
-<main class="center-main">
-  <div class="center-card expired-card">
-    <div class="expired-icon">⬡</div>
-    <h1>This tunnel has expired</h1>
-    <p id="expired-msg" class="muted">The tunnel <strong id="sub-display"></strong> is no longer active.</p>
-    <p class="muted" id="grace-msg" style="display:none">This subdomain is in its grace period until <strong id="grace-until"></strong>. Only the original owner can reclaim it until then.</p>
+<main style="display:flex;align-items:center;justify-content:center;min-height:80vh;padding:2rem">
+  <div style="background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:2.5rem;max-width:480px;width:100%;text-align:center">
+    <div style="font-size:3rem;margin-bottom:1rem">⬡</div>
+    <h1 style="margin-bottom:0.7rem">This tunnel has expired</h1>
+    <p id="expired-msg" class="muted" style="margin-bottom:0.5rem">
+      The tunnel <strong id="sub-display" style="color:var(--text)"></strong> is no longer active.
+    </p>
+    <p id="grace-msg" class="muted" style="display:none;margin-bottom:0.5rem">
+      This subdomain is in its grace period until <strong id="grace-until" style="color:var(--text)"></strong>.
+      Only the original owner can reclaim it during this time.
+    </p>
 
-    <div class="expired-actions">
-      <a id="claim-btn" href="/portal" class="btn-primary">Claim this subdomain →</a>
-      <a href="/portal" class="btn-ghost">Create a new tunnel</a>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin:1.5rem 0">
+      <a id="claim-btn" href="/vortex/portal.html" class="btn-primary">Claim this subdomain →</a>
+      <a href="/vortex/portal.html" class="btn-ghost">Create a new tunnel</a>
     </div>
 
-    <div class="expired-hint">
-      <p>Are you the original owner? Use your token to reclaim it:</p>
+    <div style="background:var(--surface2);border-radius:10px;padding:1rem;text-align:left">
+      <p class="muted" style="font-size:0.88rem;margin-bottom:0.5rem">Are you the original owner? Reclaim with your token:</p>
       <div class="code-block">
-        <code id="reclaim-cmd"></code>
+        <code id="reclaim-cmd" style="color:var(--accent2);font-size:0.82rem"></code>
         <button onclick="copyReclaim()" class="copy-btn-sm">copy</button>
       </div>
     </div>
   </div>
 </main>
 
+<script src="/vortex/js/app.js"></script>
 <script>
-const API = 'https://hackersfun369.github.io'
+function goSignIn() { window.location.href = getSignInUrl() }
+
 const params = new URLSearchParams(window.location.search)
 const sub    = params.get('sub') || ''
 
-document.getElementById('sub-display').textContent = sub || 'this subdomain'
-document.getElementById('reclaim-cmd').textContent =
+document.getElementById('sub-display').textContent  = sub || 'this subdomain'
+document.getElementById('reclaim-cmd').textContent  =
   `vortex 3000 -s ${sub || '<subdomain>'} -t <your-token>`
 
 if (sub) {
   document.getElementById('claim-btn').href =
-    `/portal?subdomain=${encodeURIComponent(sub)}`
+    `/vortex/portal.html?subdomain=${encodeURIComponent(sub)}`
 
-  // Check actual status
   fetch(`${API}/tunnel/${sub}`)
     .then(r => r.json())
     .then(data => {
       if (data.status === 'grace') {
-        document.getElementById('grace-msg').style.display = 'block'
-        document.getElementById('grace-until').textContent =
+        document.getElementById('grace-msg').style.display  = 'block'
+        document.getElementById('grace-until').textContent  =
           new Date(data.grace_until).toLocaleDateString()
-        document.getElementById('claim-btn').style.display = 'none'
+        document.getElementById('claim-btn').style.display  = 'none'
       }
-    })
-    .catch(() => {})
+    }).catch(() => {})
 }
+
+function copyReclaim() {
+  navigator.clipboard.writeText(document.getElementById('reclaim-cmd').textContent)
+  event.target.textContent = 'copied!'
+  setTimeout(() => event.target.textContent = 'copy', 2000)
+}
+
+initNav()
 </script>
 </body>
 </html>
