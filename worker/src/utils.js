@@ -1,4 +1,4 @@
-// utils.js — shared helpers
+// utils.js — shared helpers, crypto, subdomain generation
 
 const ADJECTIVES = [
   'swift','calm','bold','bright','clear','cool','dark','deep','fair','fast',
@@ -7,7 +7,6 @@ const ADJECTIVES = [
   'odd','pale','pure','rare','rich','safe','sharp','shy','slim','slow',
   'soft','still','strong','tall','thin','warm','wide','wild','wise','young'
 ]
-
 const NOUNS = [
   'river','cloud','stone','flame','ridge','creek','brook','cliff','crest',
   'delta','dune','field','fjord','grove','haven','inlet','isle','lake',
@@ -17,7 +16,7 @@ const NOUNS = [
   'gale','glen','hill','knoll','leaf','mist','rain','rock','sand','sky'
 ]
 
-// ── Subdomain generation ───────────────────────────────────────────────────
+// ── Subdomain ──────────────────────────────────────────────────────────────
 export function randomSubdomain() {
   const adj  = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)]
   const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)]
@@ -35,14 +34,12 @@ export const RESERVED_SUBS = new Set([
 export function validateSubdomain(sub) {
   if (!sub || typeof sub !== 'string') return 'subdomain is required'
   const s = sub.toLowerCase().trim()
-  if (!SUBDOMAIN_RE.test(s))
-    return 'subdomain must be 3-63 chars, lowercase letters, numbers, hyphens only'
-  if (RESERVED_SUBS.has(s))
-    return `"${s}" is a reserved subdomain`
+  if (!SUBDOMAIN_RE.test(s)) return 'subdomain: 3-63 chars, lowercase letters, numbers, hyphens only'
+  if (RESERVED_SUBS.has(s))  return `"${s}" is a reserved subdomain`
   return null
 }
 
-// ── Token / hashing ────────────────────────────────────────────────────────
+// ── Token generation ───────────────────────────────────────────────────────
 export function generateToken(prefix = '', len = 32) {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
   const bytes = crypto.getRandomValues(new Uint8Array(len))
@@ -50,6 +47,12 @@ export function generateToken(prefix = '', len = 32) {
   return prefix ? `${prefix}_${raw}` : raw
 }
 
+export function tokenHint(raw) {
+  if (!raw || raw.length < 8) return '****'
+  return raw.slice(0, 4) + '...' + raw.slice(-4)
+}
+
+// ── SHA-256 hashing ────────────────────────────────────────────────────────
 export async function sha256(str) {
   const buf  = new TextEncoder().encode(str)
   const hash = await crypto.subtle.digest('SHA-256', buf)
@@ -57,96 +60,42 @@ export async function sha256(str) {
 }
 
 export async function verifyToken(raw, hash) {
+  if (!raw || !hash) return false
   return (await sha256(raw)) === hash
 }
 
-// ── TOON helpers ───────────────────────────────────────────────────────────
-// Lightweight TOON encoder/decoder for Gist storage
-// TOON: indented key-value, no braces/brackets/quotes for simple values
-
-export function encodeTOON(obj, indent = 0) {
-  const pad = '  '.repeat(indent)
-  const lines = []
-  for (const [k, v] of Object.entries(obj)) {
-    if (v === null || v === undefined) {
-      lines.push(`${pad}${k}: null`)
-    } else if (typeof v === 'boolean' || typeof v === 'number') {
-      lines.push(`${pad}${k}: ${v}`)
-    } else if (typeof v === 'string') {
-      // quote strings containing special chars
-      const needsQuote = /[:\n\r#]/.test(v) || v.trim() !== v
-      lines.push(`${pad}${k}: ${needsQuote ? `"${v.replace(/"/g, '\\"')}"` : v}`)
-    } else if (Array.isArray(v)) {
-      if (v.length === 0) {
-        lines.push(`${pad}${k}: []`)
-      } else if (v.every(i => typeof i !== 'object' || i === null)) {
-        lines.push(`${pad}${k}: [${v.join(', ')}]`)
-      } else {
-        lines.push(`${pad}${k}:`)
-        v.forEach(item => {
-          if (typeof item === 'object' && item !== null) {
-            lines.push(`${pad}  -`)
-            lines.push(encodeTOON(item, indent + 2).split('\n').map(l => '  ' + l).join('\n'))
-          } else {
-            lines.push(`${pad}  - ${item}`)
-          }
-        })
-      }
-    } else if (typeof v === 'object') {
-      lines.push(`${pad}${k}:`)
-      lines.push(encodeTOON(v, indent + 1))
-    }
-  }
-  return lines.join('\n')
+// ── AES-256-GCM encryption ─────────────────────────────────────────────────
+async function getEncryptionKey(hexKey) {
+  const raw = new Uint8Array(hexKey.match(/.{1,2}/g).map(b => parseInt(b, 16)))
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
 }
 
-export function decodeTOON(text) {
-  // Parse TOON back to JS object — handles nested indented objects
-  const lines  = text.split('\n')
-  const result = {}
-  const stack  = [{ obj: result, indent: -1 }]
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (!line.trim() || line.trim().startsWith('#')) continue
-
-    const indent  = line.length - line.trimStart().length
-    const trimmed = line.trim()
-
-    // Pop stack back to parent level
-    while (stack.length > 1 && stack[stack.length - 1].indent >= indent) {
-      stack.pop()
-    }
-
-    const current  = stack[stack.length - 1].obj
-    const colonIdx = trimmed.indexOf(':')
-    if (colonIdx === -1) continue
-
-    const key = trimmed.slice(0, colonIdx).trim()
-    const val = trimmed.slice(colonIdx + 1).trim()
-
-    if (!key) continue
-
-    if (val === '' || val === undefined) {
-      // Nested object — next indented lines are children
-      const nested = {}
-      current[key] = nested
-      stack.push({ obj: nested, indent: indent })
-    } else if (val === 'null')                       current[key] = null
-    else if (val === 'true')                         current[key] = true
-    else if (val === 'false')                        current[key] = false
-    else if (val === '[]')                           current[key] = []
-    else if (/^\[.*\]$/.test(val)) {
-      // Array — split by comma, handle empty
-      const inner = val.slice(1, -1).trim()
-      current[key] = inner === '' ? [] : inner.split(',').map(s => s.trim())
-    }
-    else if (/^-?\d+(\.\d+)?$/.test(val))         current[key] = Number(val)
-    else if (val.startsWith('"') && val.endsWith('"')) current[key] = val.slice(1,-1).replace(/\\"/g,'"')
-    else                                              current[key] = val
+export async function encryptToken(plaintext, hexKey) {
+  try {
+    const key = await getEncryptionKey(hexKey)
+    const iv  = crypto.getRandomValues(new Uint8Array(12))
+    const enc = new TextEncoder().encode(plaintext)
+    const ct  = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc)
+    const ivB64 = btoa(String.fromCharCode(...iv))
+    const ctB64 = btoa(String.fromCharCode(...new Uint8Array(ct)))
+    return `${ivB64}:${ctB64}`
+  } catch (err) {
+    throw new Error(`encrypt failed: ${err.message}`)
   }
+}
 
-  return result
+export async function decryptToken(encrypted, hexKey) {
+  try {
+    const [ivB64, ctB64] = encrypted.split(':')
+    if (!ivB64 || !ctB64) throw new Error('invalid encrypted format')
+    const iv  = Uint8Array.from(atob(ivB64), c => c.charCodeAt(0))
+    const ct  = Uint8Array.from(atob(ctB64), c => c.charCodeAt(0))
+    const key = await getEncryptionKey(hexKey)
+    const dec = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct)
+    return new TextDecoder().decode(dec)
+  } catch (err) {
+    throw new Error(`decrypt failed: ${err.message}`)
+  }
 }
 
 // ── HTTP helpers ───────────────────────────────────────────────────────────
@@ -168,16 +117,9 @@ export function errRes(message, status = 400, extra = {}) {
 }
 
 // ── Date helpers ───────────────────────────────────────────────────────────
-export function nowISO()  { return new Date().toISOString() }
-export function daysAgo(n) {
-  return new Date(Date.now() - n * 86400000).toISOString()
-}
-export function daysFromNow(n) {
-  return new Date(Date.now() + n * 86400000).toISOString()
-}
-export function isOlderThan(isoDate, days) {
-  return new Date(isoDate).getTime() < Date.now() - days * 86400000
-}
+export function nowISO()               { return new Date().toISOString() }
+export function daysFromNow(n)         { return new Date(Date.now() + n * 86400000).toISOString() }
+export function isOlderThan(iso, days) { return new Date(iso).getTime() < Date.now() - days * 86400000 }
 
 // ── Extract bearer token ───────────────────────────────────────────────────
 export function extractBearer(request) {
@@ -185,7 +127,7 @@ export function extractBearer(request) {
   return auth.startsWith('Bearer ') ? auth.slice(7).trim() : null
 }
 
-// ── IP for rate limiting ───────────────────────────────────────────────────
+// ── Client IP ──────────────────────────────────────────────────────────────
 export function clientIP(request) {
   return request.headers.get('CF-Connecting-IP') ||
          request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
