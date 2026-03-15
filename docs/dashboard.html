@@ -307,8 +307,25 @@ async function recoverToken(sub) {
 
 async function deleteTunnel(sub) {
   if (!confirm(`Delete tunnel "${sub}"? This frees the subdomain immediately.`)) return
-  const { ok, data } = await apiCall('DELETE', `/tunnel/${sub}`)
-  if (ok) {
+
+  // Step 1: recover tunnel token using API key
+  const { ok: rok, data: rdata } = await apiCall('GET', `/tunnel/recover/${sub}`)
+  if (!rok) {
+    alert(`Could not recover token for "${sub}": ${rdata.error}`)
+    return
+  }
+
+  const tunnelToken = rdata.token
+
+  // Step 2: delete using tunnel token
+  const key = getApiKey()
+  const res  = await fetch(`${API}/tunnel/${sub}`, {
+    method:  'DELETE',
+    headers: { 'Authorization': `Bearer ${tunnelToken}` }
+  })
+  const data = await res.json()
+
+  if (res.ok) {
     document.getElementById(`row-${sub}`)?.remove()
     if (!document.getElementById('t-body').children.length) {
       show('t-table', false); show('t-empty', true)
